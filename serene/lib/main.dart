@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Required for Haptics
 import 'package:google_fonts/google_fonts.dart';
+import 'package:dynamic_color/dynamic_color.dart';
 import 'dart:math';
+import 'dart:io' show Platform;
 
 void main() {
   runApp(SereneStateProvider(model: SereneModel(), child: const SereneApp()));
@@ -415,6 +417,22 @@ class SereneModel extends ChangeNotifier {
       }
     }
   }
+
+  // --- THEME LOGIC ---
+  ThemeMode _themeMode = ThemeMode.system;
+  ThemeMode get themeMode => _themeMode;
+  bool _useMaterialYou = true;
+  bool get useMaterialYou => _useMaterialYou;
+
+  void setThemeMode(ThemeMode mode) {
+    _themeMode = mode;
+    notifyListeners();
+  }
+
+  void setUseMaterialYou(bool value) {
+    _useMaterialYou = value;
+    notifyListeners();
+  }
 }
 
 class SereneStateProvider extends InheritedNotifier<SereneModel> {
@@ -444,6 +462,14 @@ const Color kPurpleIcon = Color(0xFFB388FF);
 const Color kWarningOrange = Color(0xFFFFCC80);
 const Color kOrbPurple = Color(0xFF311B92);
 
+// Light Theme Constants
+const Color kLightBackground = Color(0xFFF5F5F5);
+const Color kLightCardColor = Colors.white;
+const Color kLightSliderContainerColor = Color(0xFFE0E0E0);
+const Color kLightAccentColor = Color(0xFF00ACC1);
+const Color kLightTextPrimary = Colors.black;
+const Color kLightTextSecondary = Colors.black54;
+
 const List<VehicleData> kAllVehicles = [
   VehicleData("Honda Accord", VehicleType.sedan),
   VehicleData("Honda Civic", VehicleType.sedan),
@@ -467,29 +493,112 @@ class SereneApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Serene Pro',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: kBackground,
-        primaryColor: kAccentColor,
-        timePickerTheme: TimePickerThemeData(
-          backgroundColor: kCardColor,
-          dialHandColor: kAccentColor,
-          dialBackgroundColor: kBackground,
-          hourMinuteTextColor: kTextPrimary,
-          dayPeriodTextColor: kTextSecondary,
-          dayPeriodColor: kSliderContainerColor,
-          entryModeIconColor: kAccentColor,
-          helpTextStyle: GoogleFonts.inter(color: kTextPrimary),
-        ),
-        textTheme: GoogleFonts.interTextTheme(
-          Theme.of(context).textTheme,
-        ).apply(bodyColor: kTextPrimary, displayColor: kTextPrimary),
-        useMaterial3: true,
-      ),
-      home: const DashboardScreen(),
+    final model = SereneStateProvider.of(context);
+
+    return DynamicColorBuilder(
+      builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
+        ColorScheme lightScheme;
+        ColorScheme darkScheme;
+
+        if (lightDynamic != null &&
+            darkDynamic != null &&
+            model.useMaterialYou) {
+          lightScheme = lightDynamic.copyWith(
+            primary: kLightAccentColor,
+            secondary: kLightAccentColor,
+          );
+          darkScheme = darkDynamic.copyWith(
+            primary: kAccentColor,
+            secondary: kAccentColor,
+          );
+        } else {
+          lightScheme = const ColorScheme.light(
+            primary: kLightAccentColor,
+            secondary: kLightAccentColor,
+            surface: kLightCardColor,
+            surfaceContainerHighest: kLightSliderContainerColor,
+            onSurface: kLightTextPrimary,
+            onSurfaceVariant: kLightTextSecondary,
+          );
+          darkScheme = const ColorScheme.dark(
+            primary: kAccentColor,
+            secondary: kAccentColor,
+            surface: kCardColor,
+            surfaceContainerHighest: kSliderContainerColor,
+            onSurface: kTextPrimary,
+            onSurfaceVariant: kTextSecondary,
+          );
+        }
+
+        return MaterialApp(
+          title: 'Serene Pro',
+          debugShowCheckedModeBanner: false,
+          themeMode: model.themeMode,
+          theme: ThemeData(
+            brightness: Brightness.light,
+            scaffoldBackgroundColor:
+                (model.useMaterialYou && lightDynamic != null)
+                ? lightScheme.surfaceContainerLowest
+                : kLightBackground,
+            primaryColor: lightScheme.primary,
+            cardColor: (model.useMaterialYou && lightDynamic != null)
+                ? lightScheme.surfaceContainer
+                : kLightCardColor,
+            canvasColor: (model.useMaterialYou && lightDynamic != null)
+                ? lightScheme.surfaceContainer
+                : kLightCardColor,
+            colorScheme: lightScheme,
+            timePickerTheme: TimePickerThemeData(
+              backgroundColor: lightScheme.surfaceContainer,
+              dialHandColor: lightScheme.primary,
+              dialBackgroundColor: lightScheme.surface,
+              hourMinuteTextColor: lightScheme.onSurface,
+              dayPeriodTextColor: lightScheme.onSurfaceVariant,
+              dayPeriodColor: lightScheme.surfaceContainerHighest,
+              entryModeIconColor: lightScheme.primary,
+              helpTextStyle: GoogleFonts.inter(color: lightScheme.onSurface),
+            ),
+            textTheme: GoogleFonts.interTextTheme(Theme.of(context).textTheme)
+                .apply(
+                  bodyColor: lightScheme.onSurface,
+                  displayColor: lightScheme.onSurface,
+                ),
+            useMaterial3: true,
+          ),
+          darkTheme: ThemeData(
+            brightness: Brightness.dark,
+            scaffoldBackgroundColor:
+                (model.useMaterialYou && darkDynamic != null)
+                ? darkScheme.surfaceContainerLowest
+                : kBackground,
+            primaryColor: darkScheme.primary,
+            cardColor: (model.useMaterialYou && darkDynamic != null)
+                ? darkScheme.surfaceContainer
+                : kCardColor,
+            canvasColor: (model.useMaterialYou && darkDynamic != null)
+                ? darkScheme.surfaceContainer
+                : kCardColor,
+            colorScheme: darkScheme,
+            timePickerTheme: TimePickerThemeData(
+              backgroundColor: darkScheme.surfaceContainer,
+              dialHandColor: darkScheme.primary,
+              dialBackgroundColor: darkScheme.surface,
+              hourMinuteTextColor: darkScheme.onSurface,
+              dayPeriodTextColor: darkScheme.onSurfaceVariant,
+              dayPeriodColor: darkScheme.surfaceContainerHighest,
+              entryModeIconColor: darkScheme.primary,
+              helpTextStyle: GoogleFonts.inter(color: darkScheme.onSurface),
+            ),
+            textTheme: GoogleFonts.interTextTheme(Theme.of(context).textTheme)
+                .apply(
+                  bodyColor: darkScheme.onSurface,
+                  displayColor: darkScheme.onSurface,
+                ),
+            useMaterial3: true,
+          ),
+          home: const DashboardScreen(),
+        );
+      },
     );
   }
 }
@@ -702,8 +811,8 @@ class SereneCard extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     margin: const EdgeInsets.symmetric(vertical: 8),
     decoration: BoxDecoration(
-      color: kCardColor,
-      borderRadius: BorderRadius.circular(24),
+      color: Theme.of(context).cardColor,
+      borderRadius: BorderRadius.circular(33),
     ),
     child: Material(
       color: Colors.transparent,
@@ -735,7 +844,7 @@ class SereneSection extends StatelessWidget {
       return Column(
         children: [
           Material(
-            color: kCardColor,
+            color: Theme.of(context).cardColor,
             borderRadius: radius,
             clipBehavior: Clip.antiAlias,
             child: children[index],
@@ -799,7 +908,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final model = SereneStateProvider.of(context);
     showModalBottomSheet(
       context: context,
-      backgroundColor: kCardColor,
+      backgroundColor: Theme.of(context).cardColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -871,7 +980,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     double ancLevel = currentVehicle.ancLevel;
     bool isAtEdge = (ancLevel == 0 || ancLevel == 10);
-    Color activeIconColor = const Color(0xFF006064);
+    Color activeIconColor = const Color.fromARGB(255, 0, 0, 0);
     double sliderHorizontalPadding = isAtEdge ? 0.0 : 20.0;
     const Gradient sereneGradient = LinearGradient(
       colors: [kSuccessGreen, kAccentColor],
@@ -950,30 +1059,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.05),
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.directions_car,
                       size: 18,
-                      color: Colors.white70,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                     const SizedBox(width: 8),
                     Text(
                       "Connected to ${currentVehicle.name}",
-                      style: const TextStyle(
-                        color: Colors.white70,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
                     const SizedBox(width: 4),
-                    const Icon(
+                    Icon(
                       Icons.arrow_drop_down,
-                      color: Colors.white70,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                       size: 18,
                     ),
                   ],
@@ -1035,7 +1144,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
             const SizedBox(height: 32),
             SereneCard(
-              padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
               child: Column(
                 children: [
                   Text(
@@ -1198,7 +1307,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 width: 260,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: const Color(0xFF1A1A1A),
+                  color: Theme.of(context).cardColor,
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withOpacity(0.5),
@@ -1207,7 +1316,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ],
                   border: Border.all(
-                    color: Colors.white.withOpacity(0.05),
+                    color: Theme.of(context).dividerColor,
                     width: 1,
                   ),
                 ),
@@ -1251,23 +1360,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     subtitle,
-                    style: const TextStyle(color: kTextSecondary, fontSize: 13),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontSize: 13,
+                    ),
                   ),
                 ],
               ),
             ),
-            const Icon(
+            Icon(
               Icons.arrow_forward_ios,
               size: 14,
-              color: kTextSecondary,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ],
         ),
@@ -1291,7 +1404,7 @@ class PairedDevicesScreen extends StatelessWidget {
     void _showDeviceOptions(UserDevice device) {
       showModalBottomSheet(
         context: context,
-        backgroundColor: kCardColor,
+        backgroundColor: Theme.of(context).cardColor,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
@@ -1387,6 +1500,7 @@ class PairedDevicesScreen extends StatelessWidget {
                   child: Container(
                     color: isActive ? kAccentColor.withOpacity(0.05) : null,
                     child: _buildDeviceTile(
+                      context,
                       device: device,
                       isPhone: isPhone,
                       isActive: isActive,
@@ -1426,6 +1540,7 @@ class PairedDevicesScreen extends StatelessWidget {
           SereneSection(
             children: [
               _buildSectionHeader(
+                context,
                 "Add Devices",
                 Icons.add,
                 onTap: () => Navigator.push(
@@ -1437,12 +1552,14 @@ class PairedDevicesScreen extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           _buildInfoCard(
+            context,
             Icons.info_outline,
             "Tap a device to view status. Long press for options.",
             const Color(0xFF4FC3F7),
           ),
           const SizedBox(height: 12),
           _buildInfoCard(
+            context,
             Icons.info_outline,
             "Your phone will only be used as an ANC device if no device are online and your phone is connected to your car",
             kSuccessGreen,
@@ -1453,6 +1570,7 @@ class PairedDevicesScreen extends StatelessWidget {
   }
 
   Widget _buildSectionHeader(
+    BuildContext context,
     String title,
     IconData icon, {
     VoidCallback? onTap,
@@ -1465,15 +1583,20 @@ class PairedDevicesScreen extends StatelessWidget {
         children: [
           Text(
             title,
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
           ),
-          Icon(icon, size: 28),
+          Icon(icon, size: 28, color: Theme.of(context).colorScheme.onSurface),
         ],
       ),
     ),
   );
 
-  Widget _buildDeviceTile({
+  Widget _buildDeviceTile(
+    BuildContext context, {
     required UserDevice device,
     required bool isPhone,
     required bool isActive,
@@ -1508,7 +1631,10 @@ class PairedDevicesScreen extends StatelessWidget {
               shape: shape,
               borderRadius: borderRadius,
               border: isPhone
-                  ? Border.all(color: Colors.white, width: 2)
+                  ? Border.all(
+                      color: Theme.of(context).colorScheme.onSurface,
+                      width: 2,
+                    )
                   : null,
               gradient: isPhone
                   ? null
@@ -1519,7 +1645,13 @@ class PairedDevicesScreen extends StatelessWidget {
                       ],
                     ),
             ),
-            child: isPhone ? const Icon(Icons.smartphone, size: 24) : null,
+            child: isPhone
+                ? Icon(
+                    Icons.smartphone,
+                    size: 24,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  )
+                : null,
           ),
           const SizedBox(width: 20),
           Expanded(
@@ -1531,15 +1663,20 @@ class PairedDevicesScreen extends StatelessWidget {
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 18,
-                    color: isActive ? kAccentColor : Colors.white,
+                    color: isActive
+                        ? kAccentColor
+                        : Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
                 if (device.status == "Resetting...")
-                  const Padding(
-                    padding: EdgeInsets.only(top: 4),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
                     child: Text(
                       "Resetting...",
-                      style: TextStyle(color: Colors.grey, fontSize: 12),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontSize: 12,
+                      ),
                     ),
                   ),
                 const SizedBox(height: 4),
@@ -1547,9 +1684,13 @@ class PairedDevicesScreen extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     if (device.isUsbConnected)
-                      const Padding(
-                        padding: EdgeInsets.only(right: 8),
-                        child: Icon(Icons.usb, size: 16, color: Colors.white70),
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: Icon(
+                          Icons.usb,
+                          size: 16,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                       ),
                     GestureDetector(
                       onTap: onTheftToggle,
@@ -1560,7 +1701,9 @@ class PairedDevicesScreen extends StatelessWidget {
                           size: 16,
                           color: device.isTheftDetector
                               ? kSuccessGreen
-                              : Colors.grey.withOpacity(0.3),
+                              : Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant.withOpacity(0.3),
                         ),
                       ),
                     ),
@@ -1587,31 +1730,35 @@ class PairedDevicesScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoCard(IconData icon, String text, Color iconColor) =>
-      Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: const Color(0xFF263238),
-          borderRadius: BorderRadius.circular(36),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Icon(icon, color: iconColor, size: 28),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                text,
-                style: const TextStyle(
-                  fontSize: 13,
-                  height: 1.3,
-                  color: Colors.white70,
-                ),
-              ),
+  Widget _buildInfoCard(
+    BuildContext context,
+    IconData icon,
+    String text,
+    Color iconColor,
+  ) => Container(
+    padding: const EdgeInsets.all(20),
+    decoration: BoxDecoration(
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(36),
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Icon(icon, color: iconColor, size: 28),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(
+              fontSize: 13,
+              height: 1.3,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
-          ],
+          ),
         ),
-      );
+      ],
+    ),
+  );
 }
 
 // --- SETUP FLOW ---
@@ -1956,7 +2103,7 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
-              backgroundColor: kCardColor,
+              backgroundColor: Theme.of(context).cardColor,
               title: const Text("Add Custom Vehicle"),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -1971,7 +2118,7 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
                   DropdownButton<VehicleType>(
                     value: selectedType,
                     isExpanded: true,
-                    dropdownColor: kCardColor,
+                    dropdownColor: Theme.of(context).cardColor,
                     items: VehicleType.values
                         .map(
                           (t) => DropdownMenuItem(
@@ -2050,9 +2197,9 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             padding: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(
-              color: const Color(0xFF2C2C2C),
+              color: Theme.of(context).cardColor,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.white10),
+              border: Border.all(color: Theme.of(context).dividerColor),
             ),
             child: TextField(
               controller: _searchController,
@@ -2063,7 +2210,9 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
                     )
                     .toList(),
               ),
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(
+                color: Theme.of(context).textTheme.bodyMedium?.color,
+              ),
               decoration: const InputDecoration(
                 icon: Icon(Icons.search, color: Colors.grey),
                 hintText: "Search model",
@@ -2076,7 +2225,7 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
             child: Container(
               margin: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
-                color: const Color(0xFF1F1F1F),
+                color: Theme.of(context).cardColor,
                 borderRadius: BorderRadius.circular(20),
               ),
               child: ListView(
@@ -2105,7 +2254,7 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
                             fontSize: 15,
                             color: _selectedExistingVehicleId == v.id
                                 ? kAccentColor
-                                : Colors.white,
+                                : Theme.of(context).textTheme.bodyMedium?.color,
                           ),
                         ),
                         trailing: _selectedExistingVehicleId == v.id
@@ -2123,7 +2272,7 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
                         },
                       ),
                     ),
-                    Divider(height: 1, color: Colors.white.withOpacity(0.1)),
+                    Divider(height: 1, color: Theme.of(context).dividerColor),
                   ],
                   const Padding(
                     padding: EdgeInsets.all(16),
@@ -2151,7 +2300,7 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
                               _selectedVehicle == v &&
                                   _selectedExistingVehicleId == null
                               ? kAccentColor
-                              : Colors.white,
+                              : Theme.of(context).textTheme.bodyMedium?.color,
                         ),
                       ),
                       trailing:
@@ -2792,11 +2941,49 @@ class _ConfigurationScreenState extends State<ConfigurationScreen> {
         children: [
           SereneCard(
             padding: EdgeInsets.zero,
-            child: _buildToggleRow(
-              "Wireless Android Auto",
-              "Enable wireless android auto to cars\nthat have wired android auto exclusively",
-              wirelessAndroidAuto,
-              (v) => setState(() => wirelessAndroidAuto = v),
+            child: Column(
+              children: [
+                _buildToggleRow(
+                  "Dark Mode",
+                  "Enable dark theme",
+                  Theme.of(context).brightness == Brightness.dark,
+                  (v) {
+                    final model = SereneStateProvider.of(context);
+                    model.setThemeMode(v ? ThemeMode.dark : ThemeMode.light);
+                  },
+                ),
+                if (Platform.isAndroid) ...[
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Divider(
+                      height: 1,
+                      color: Theme.of(context).dividerColor,
+                    ),
+                  ),
+                  _buildToggleRow(
+                    "Material You",
+                    "Use system colors",
+                    SereneStateProvider.of(context).useMaterialYou,
+                    (v) {
+                      final model = SereneStateProvider.of(context);
+                      model.setUseMaterialYou(v);
+                    },
+                  ),
+                ],
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Divider(
+                    height: 1,
+                    color: Theme.of(context).dividerColor,
+                  ),
+                ),
+                _buildToggleRow(
+                  "Wireless Android Auto",
+                  "Enable wireless android auto to cars\nthat have wired android auto exclusively",
+                  wirelessAndroidAuto,
+                  (v) => setState(() => wirelessAndroidAuto = v),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 12),
@@ -3027,7 +3214,7 @@ class _ConfigurationScreenState extends State<ConfigurationScreen> {
             activeColor: const Color(0xFF455A64),
             activeTrackColor: const Color(0xFF80CBC4),
             inactiveThumbColor: Colors.grey,
-            inactiveTrackColor: Colors.black26,
+            inactiveTrackColor: Theme.of(context).disabledColor,
           ),
         ),
       ],
@@ -3143,9 +3330,10 @@ class VehicleScreen extends StatelessWidget {
               final vehicleDevices = model.getDevicesForVehicle(v.id);
               return SereneSection(
                 children: [
-                  _buildVehicleHeader(v.name),
+                  _buildVehicleHeader(context, v.name),
                   ...vehicleDevices.map(
                     (d) => _buildVehicleDeviceRow(
+                      context,
                       name: d.name,
                       shape:
                           d.model.contains("Mini") || d.model.contains("Core")
@@ -3167,12 +3355,14 @@ class VehicleScreen extends StatelessWidget {
                       trailing: Row(
                         children: [
                           if (d.isUsbConnected)
-                            const Padding(
-                              padding: EdgeInsets.only(right: 8),
+                            Padding(
+                              padding: const EdgeInsets.only(right: 8),
                               child: Icon(
                                 Icons.usb,
                                 size: 18,
-                                color: Colors.white,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
                               ),
                             ),
                           if (d.isTheftDetector)
@@ -3210,14 +3400,22 @@ class VehicleScreen extends StatelessWidget {
               context,
               MaterialPageRoute(builder: (c) => const AddDeviceScreen()),
             ),
-            child: const Row(
+            child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   "Add New Vehicle",
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
                 ),
-                Icon(Icons.add, size: 30),
+                Icon(
+                  Icons.add,
+                  size: 30,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
               ],
             ),
           ),
@@ -3226,21 +3424,26 @@ class VehicleScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildVehicleHeader(String name) => Container(
+  Widget _buildVehicleHeader(BuildContext context, String name) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-    color: const Color(0xFF263238).withOpacity(0.5),
+    color: Theme.of(context).colorScheme.surfaceContainerHighest,
     child: Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
           name,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
         ),
         const Icon(Icons.shield_outlined, color: kSuccessGreen, size: 20),
       ],
     ),
   );
-  Widget _buildVehicleDeviceRow({
+  Widget _buildVehicleDeviceRow(
+    BuildContext context, {
     required String name,
     required BoxShape shape,
     required Color color,
@@ -3263,7 +3466,11 @@ class VehicleScreen extends StatelessWidget {
         const SizedBox(width: 16),
         Text(
           name,
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
         ),
         const Spacer(),
         trailing,
