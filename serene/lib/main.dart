@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Required for Haptics
 import 'package:google_fonts/google_fonts.dart';
-import 'package:dynamic_color/dynamic_color.dart';
 import 'dart:math';
 import 'dart:io' show Platform;
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  runApp(SereneStateProvider(model: SereneModel(), child: const SereneApp()));
+  WidgetsFlutterBinding.ensureInitialized();
+  final model = SereneModel();
+  // Load data after app initialization
+  model.loadData();
+  runApp(SereneStateProvider(model: model, child: const SereneApp()));
 }
 
 // --- DATA MODELS & STATE MANAGEMENT ---
@@ -45,6 +50,34 @@ class UserDevice {
     this.status = "Connected",
     this.batteryLevel = 1.0,
   });
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'vehicleId': vehicleId,
+    'name': name,
+    'model': model,
+    'color': color.value,
+    'isHub': isHub,
+    'isTheftDetector': isTheftDetector,
+    'isUsbConnected': isUsbConnected,
+    'hasBattery': hasBattery,
+    'status': status,
+    'batteryLevel': batteryLevel,
+  };
+
+  factory UserDevice.fromJson(Map<String, dynamic> json) => UserDevice(
+    id: json['id'],
+    vehicleId: json['vehicleId'],
+    name: json['name'],
+    model: json['model'],
+    color: Color(json['color']),
+    isHub: json['isHub'] ?? false,
+    isTheftDetector: json['isTheftDetector'] ?? false,
+    isUsbConnected: json['isUsbConnected'] ?? false,
+    hasBattery: json['hasBattery'] ?? false,
+    status: json['status'] ?? 'Connected',
+    batteryLevel: json['batteryLevel'] ?? 1.0,
+  );
 }
 
 class UserVehicle {
@@ -63,6 +96,24 @@ class UserVehicle {
     this.isTheftProtectionActive = false,
     this.ancLevel = 4.0,
   });
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'type': type.name,
+    'speakerCount': speakerCount,
+    'isTheftProtectionActive': isTheftProtectionActive,
+    'ancLevel': ancLevel,
+  };
+
+  factory UserVehicle.fromJson(Map<String, dynamic> json) => UserVehicle(
+    id: json['id'],
+    name: json['name'],
+    type: VehicleType.values.firstWhere((e) => e.name == json['type']),
+    speakerCount: json['speakerCount'],
+    isTheftProtectionActive: json['isTheftProtectionActive'] ?? false,
+    ancLevel: json['ancLevel'] ?? 4.0,
+  );
 }
 
 // Global State Logic
@@ -130,11 +181,13 @@ class SereneModel extends ChangeNotifier {
       );
       _activeDeviceId = hub.id;
     }
+    saveData();
     notifyListeners();
   }
 
   void setActiveDevice(String deviceId) {
     _activeDeviceId = deviceId;
+    saveData();
     notifyListeners();
   }
 
@@ -142,6 +195,7 @@ class SereneModel extends ChangeNotifier {
     final index = _vehicles.indexWhere((v) => v.id == vehicleId);
     if (index != -1) {
       _vehicles[index].ancLevel = level;
+      saveData();
       notifyListeners();
     }
   }
@@ -179,6 +233,7 @@ class SereneModel extends ChangeNotifier {
       _reassignTheftProtection(vehicleId);
     }
 
+    saveData();
     notifyListeners();
   }
 
@@ -191,6 +246,7 @@ class SereneModel extends ChangeNotifier {
       Future.delayed(const Duration(seconds: 2), () {
         if (index < _devices.length) {
           _devices[index].status = "Connected";
+          saveData();
           notifyListeners();
         }
       });
@@ -243,6 +299,7 @@ class SereneModel extends ChangeNotifier {
       vehicle.isTheftProtectionActive = false;
     }
 
+    saveData();
     notifyListeners();
   }
 
@@ -274,6 +331,7 @@ class SereneModel extends ChangeNotifier {
       vehicle.isTheftProtectionActive = false;
     }
 
+    saveData();
     notifyListeners();
     return disabledDeviceName;
   }
@@ -291,6 +349,7 @@ class SereneModel extends ChangeNotifier {
         }
       }
     }
+    saveData();
     notifyListeners();
     return null;
   }
@@ -311,6 +370,7 @@ class SereneModel extends ChangeNotifier {
       selectedModel,
     );
     _reassignTheftProtection(vehicleId);
+    saveData();
     notifyListeners();
   }
 
@@ -347,6 +407,7 @@ class SereneModel extends ChangeNotifier {
       _activeDeviceId = addedDevices.first.id;
     }
 
+    saveData();
     notifyListeners();
   }
 
@@ -421,17 +482,90 @@ class SereneModel extends ChangeNotifier {
   // --- THEME LOGIC ---
   ThemeMode _themeMode = ThemeMode.system;
   ThemeMode get themeMode => _themeMode;
-  bool _useMaterialYou = true;
+  bool _useMaterialYou = false;
   bool get useMaterialYou => _useMaterialYou;
 
   void setThemeMode(ThemeMode mode) {
     _themeMode = mode;
+    saveData();
     notifyListeners();
   }
 
   void setUseMaterialYou(bool value) {
     _useMaterialYou = value;
+    saveData();
     notifyListeners();
+  }
+
+  // --- DATA PERSISTENCE ---
+  Future<void> saveData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      // Save vehicles
+      final vehiclesJson = _vehicles.map((v) => v.toJson()).toList();
+      await prefs.setString('vehicles', jsonEncode(vehiclesJson));
+
+      // Save devices
+      final devicesJson = _devices.map((d) => d.toJson()).toList();
+      await prefs.setString('devices', jsonEncode(devicesJson));
+
+      // Save current selections
+      if (_currentVehicleId != null) {
+        await prefs.setString('currentVehicleId', _currentVehicleId!);
+      }
+      if (_activeDeviceId != null) {
+        await prefs.setString('activeDeviceId', _activeDeviceId!);
+      }
+
+      // Save theme settings
+      await prefs.setString('themeMode', _themeMode.name);
+      await prefs.setBool('useMaterialYou', _useMaterialYou);
+    } catch (e) {
+      // Silently fail if preferences aren't available yet
+      // This can happen during app initialization
+    }
+  }
+
+  Future<void> loadData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      // Load vehicles
+      final vehiclesString = prefs.getString('vehicles');
+      if (vehiclesString != null) {
+        final List<dynamic> vehiclesJson = jsonDecode(vehiclesString);
+        _vehicles.clear();
+        _vehicles.addAll(vehiclesJson.map((v) => UserVehicle.fromJson(v)));
+      }
+
+      // Load devices
+      final devicesString = prefs.getString('devices');
+      if (devicesString != null) {
+        final List<dynamic> devicesJson = jsonDecode(devicesString);
+        _devices.clear();
+        _devices.addAll(devicesJson.map((d) => UserDevice.fromJson(d)));
+      }
+
+      // Load current selections
+      _currentVehicleId = prefs.getString('currentVehicleId');
+      _activeDeviceId = prefs.getString('activeDeviceId');
+
+      // Load theme settings
+      final themeModeString = prefs.getString('themeMode');
+      if (themeModeString != null) {
+        _themeMode = ThemeMode.values.firstWhere(
+          (e) => e.name == themeModeString,
+          orElse: () => ThemeMode.system,
+        );
+      }
+      _useMaterialYou = prefs.getBool('useMaterialYou') ?? false;
+
+      notifyListeners();
+    } catch (e) {
+      // If loading fails, continue with default empty state
+      // This can happen on first run or if storage is unavailable
+    }
   }
 }
 
@@ -467,8 +601,11 @@ const Color kLightBackground = Color(0xFFF5F5F5);
 const Color kLightCardColor = Colors.white;
 const Color kLightSliderContainerColor = Color(0xFFE0E0E0);
 const Color kLightAccentColor = Color(0xFF00ACC1);
-const Color kLightTextPrimary = Colors.black;
-const Color kLightTextSecondary = Colors.black54;
+const Color kLightTextPrimary = Color(0xFF1A1A1A);
+const Color kLightTextSecondary = Color(0xFF666666);
+const Color kLightDivider = Color(0xFFE0E0E0);
+const Color kLightSuccessGreen = Color(0xFF2E7D32);
+const Color kLightCardBackground = Color(0xFFFAFAFA);
 
 const List<VehicleData> kAllVehicles = [
   VehicleData("Honda Accord", VehicleType.sedan),
@@ -495,110 +632,117 @@ class SereneApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final model = SereneStateProvider.of(context);
 
-    return DynamicColorBuilder(
-      builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
-        ColorScheme lightScheme;
-        ColorScheme darkScheme;
+    // Get dynamic color scheme if Material You is enabled
+    ColorScheme? lightDynamic;
+    ColorScheme? darkDynamic;
 
-        if (lightDynamic != null &&
-            darkDynamic != null &&
-            model.useMaterialYou) {
-          lightScheme = lightDynamic.copyWith(
-            primary: kLightAccentColor,
-            secondary: kLightAccentColor,
-          );
-          darkScheme = darkDynamic.copyWith(
-            primary: kAccentColor,
-            secondary: kAccentColor,
-          );
-        } else {
-          lightScheme = const ColorScheme.light(
-            primary: kLightAccentColor,
-            secondary: kLightAccentColor,
-            surface: kLightCardColor,
-            surfaceContainerHighest: kLightSliderContainerColor,
-            onSurface: kLightTextPrimary,
-            onSurfaceVariant: kLightTextSecondary,
-          );
-          darkScheme = const ColorScheme.dark(
-            primary: kAccentColor,
-            secondary: kAccentColor,
-            surface: kCardColor,
-            surfaceContainerHighest: kSliderContainerColor,
-            onSurface: kTextPrimary,
-            onSurfaceVariant: kTextSecondary,
-          );
-        }
+    if (model.useMaterialYou && Platform.isAndroid) {
+      // We'll use a FutureBuilder approach in production, but for now
+      // we'll create Material You inspired schemes
+      lightDynamic = ColorScheme.fromSeed(
+        seedColor: kLightAccentColor,
+        brightness: Brightness.light,
+      );
+      darkDynamic = ColorScheme.fromSeed(
+        seedColor: kAccentColor,
+        brightness: Brightness.dark,
+      );
+    }
 
-        return MaterialApp(
-          title: 'Serene Pro',
-          debugShowCheckedModeBanner: false,
-          themeMode: model.themeMode,
-          theme: ThemeData(
-            brightness: Brightness.light,
-            scaffoldBackgroundColor:
-                (model.useMaterialYou && lightDynamic != null)
-                ? lightScheme.surfaceContainerLowest
-                : kLightBackground,
-            primaryColor: lightScheme.primary,
-            cardColor: (model.useMaterialYou && lightDynamic != null)
-                ? lightScheme.surfaceContainer
-                : kLightCardColor,
-            canvasColor: (model.useMaterialYou && lightDynamic != null)
-                ? lightScheme.surfaceContainer
-                : kLightCardColor,
-            colorScheme: lightScheme,
-            timePickerTheme: TimePickerThemeData(
-              backgroundColor: lightScheme.surfaceContainer,
-              dialHandColor: lightScheme.primary,
-              dialBackgroundColor: lightScheme.surface,
-              hourMinuteTextColor: lightScheme.onSurface,
-              dayPeriodTextColor: lightScheme.onSurfaceVariant,
-              dayPeriodColor: lightScheme.surfaceContainerHighest,
-              entryModeIconColor: lightScheme.primary,
-              helpTextStyle: GoogleFonts.inter(color: lightScheme.onSurface),
-            ),
-            textTheme: GoogleFonts.interTextTheme(Theme.of(context).textTheme)
-                .apply(
-                  bodyColor: lightScheme.onSurface,
-                  displayColor: lightScheme.onSurface,
-                ),
-            useMaterial3: true,
-          ),
-          darkTheme: ThemeData(
-            brightness: Brightness.dark,
-            scaffoldBackgroundColor:
-                (model.useMaterialYou && darkDynamic != null)
-                ? darkScheme.surfaceContainerLowest
-                : kBackground,
-            primaryColor: darkScheme.primary,
-            cardColor: (model.useMaterialYou && darkDynamic != null)
-                ? darkScheme.surfaceContainer
-                : kCardColor,
-            canvasColor: (model.useMaterialYou && darkDynamic != null)
-                ? darkScheme.surfaceContainer
-                : kCardColor,
-            colorScheme: darkScheme,
-            timePickerTheme: TimePickerThemeData(
-              backgroundColor: darkScheme.surfaceContainer,
-              dialHandColor: darkScheme.primary,
-              dialBackgroundColor: darkScheme.surface,
-              hourMinuteTextColor: darkScheme.onSurface,
-              dayPeriodTextColor: darkScheme.onSurfaceVariant,
-              dayPeriodColor: darkScheme.surfaceContainerHighest,
-              entryModeIconColor: darkScheme.primary,
-              helpTextStyle: GoogleFonts.inter(color: darkScheme.onSurface),
-            ),
-            textTheme: GoogleFonts.interTextTheme(Theme.of(context).textTheme)
-                .apply(
-                  bodyColor: darkScheme.onSurface,
-                  displayColor: darkScheme.onSurface,
-                ),
-            useMaterial3: true,
-          ),
-          home: const DashboardScreen(),
+    final lightColorScheme =
+        lightDynamic ??
+        const ColorScheme.light(
+          primary: kLightAccentColor,
+          secondary: kLightAccentColor,
+          surface: kLightCardColor,
+          surfaceContainerHighest: kLightSliderContainerColor,
+          onSurface: kLightTextPrimary,
+          onSurfaceVariant: kLightTextSecondary,
         );
-      },
+
+    final darkColorScheme =
+        darkDynamic ??
+        const ColorScheme.dark(
+          primary: kAccentColor,
+          secondary: kAccentColor,
+          surface: kCardColor,
+          surfaceContainerHighest: kSliderContainerColor,
+          onSurface: kTextPrimary,
+          onSurfaceVariant: kTextSecondary,
+        );
+
+    return MaterialApp(
+      title: 'Serene Pro',
+      debugShowCheckedModeBanner: false,
+      themeMode: model.themeMode,
+      theme: ThemeData(
+        brightness: Brightness.light,
+        scaffoldBackgroundColor: model.useMaterialYou
+            ? lightColorScheme.surface
+            : kLightBackground,
+        primaryColor: lightColorScheme.primary,
+        cardColor: model.useMaterialYou
+            ? lightColorScheme.surfaceContainer
+            : kLightCardColor,
+        canvasColor: model.useMaterialYou
+            ? lightColorScheme.surfaceContainer
+            : kLightCardColor,
+        colorScheme: lightColorScheme,
+        timePickerTheme: TimePickerThemeData(
+          backgroundColor: model.useMaterialYou
+              ? lightColorScheme.surfaceContainer
+              : kLightCardColor,
+          dialHandColor: lightColorScheme.primary,
+          dialBackgroundColor: model.useMaterialYou
+              ? lightColorScheme.surface
+              : kLightBackground,
+          hourMinuteTextColor: lightColorScheme.onSurface,
+          dayPeriodTextColor: lightColorScheme.onSurfaceVariant,
+          dayPeriodColor: lightColorScheme.surfaceContainerHighest,
+          entryModeIconColor: lightColorScheme.primary,
+          helpTextStyle: GoogleFonts.inter(color: lightColorScheme.onSurface),
+        ),
+        textTheme: GoogleFonts.interTextTheme(ThemeData.light().textTheme)
+            .apply(
+              bodyColor: lightColorScheme.onSurface,
+              displayColor: lightColorScheme.onSurface,
+            ),
+        useMaterial3: true,
+      ),
+      darkTheme: ThemeData(
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: model.useMaterialYou
+            ? darkColorScheme.surface
+            : kBackground,
+        primaryColor: darkColorScheme.primary,
+        cardColor: model.useMaterialYou
+            ? darkColorScheme.surfaceContainer
+            : kCardColor,
+        canvasColor: model.useMaterialYou
+            ? darkColorScheme.surfaceContainer
+            : kCardColor,
+        colorScheme: darkColorScheme,
+        timePickerTheme: TimePickerThemeData(
+          backgroundColor: model.useMaterialYou
+              ? darkColorScheme.surfaceContainer
+              : kCardColor,
+          dialHandColor: darkColorScheme.primary,
+          dialBackgroundColor: model.useMaterialYou
+              ? darkColorScheme.surface
+              : kBackground,
+          hourMinuteTextColor: darkColorScheme.onSurface,
+          dayPeriodTextColor: darkColorScheme.onSurfaceVariant,
+          dayPeriodColor: darkColorScheme.surfaceContainerHighest,
+          entryModeIconColor: darkColorScheme.primary,
+          helpTextStyle: GoogleFonts.inter(color: darkColorScheme.onSurface),
+        ),
+        textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme).apply(
+          bodyColor: darkColorScheme.onSurface,
+          displayColor: darkColorScheme.onSurface,
+        ),
+        useMaterial3: true,
+      ),
+      home: const DashboardScreen(),
     );
   }
 }
@@ -1158,7 +1302,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Container(
                     height: 48,
                     decoration: BoxDecoration(
-                      color: kSliderContainerColor,
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(24),
                     ),
                     child: Stack(
@@ -1235,6 +1381,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
             const SizedBox(height: 16),
             SereneSection(
               children: [
+                _buildMenuRow(
+                  "Theft Protection",
+                  "Manage theft detection settings",
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (c) => const TheftProtectionScreen(),
+                    ),
+                  ),
+                ),
+                _buildMenuRow(
+                  "App Settings",
+                  "Theme, notifications, and preferences",
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (c) => const AppSettingsScreen(),
+                    ),
+                  ),
+                ),
                 _buildMenuRow(
                   "Configuration",
                   "Set the position of the speaker",
@@ -1360,27 +1526,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 children: [
                   Text(
                     title,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
-                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     subtitle,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      fontSize: 13,
-                    ),
+                    style: const TextStyle(color: kTextSecondary, fontSize: 13),
                   ),
                 ],
               ),
             ),
-            Icon(
+            const Icon(
               Icons.arrow_forward_ios,
               size: 14,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              color: kTextSecondary,
             ),
           ],
         ),
@@ -1500,7 +1662,6 @@ class PairedDevicesScreen extends StatelessWidget {
                   child: Container(
                     color: isActive ? kAccentColor.withOpacity(0.05) : null,
                     child: _buildDeviceTile(
-                      context,
                       device: device,
                       isPhone: isPhone,
                       isActive: isActive,
@@ -1540,7 +1701,6 @@ class PairedDevicesScreen extends StatelessWidget {
           SereneSection(
             children: [
               _buildSectionHeader(
-                context,
                 "Add Devices",
                 Icons.add,
                 onTap: () => Navigator.push(
@@ -1570,7 +1730,6 @@ class PairedDevicesScreen extends StatelessWidget {
   }
 
   Widget _buildSectionHeader(
-    BuildContext context,
     String title,
     IconData icon, {
     VoidCallback? onTap,
@@ -1583,20 +1742,15 @@ class PairedDevicesScreen extends StatelessWidget {
         children: [
           Text(
             title,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Theme.of(context).colorScheme.onSurface,
-            ),
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
-          Icon(icon, size: 28, color: Theme.of(context).colorScheme.onSurface),
+          Icon(icon, size: 28),
         ],
       ),
     ),
   );
 
-  Widget _buildDeviceTile(
-    BuildContext context, {
+  Widget _buildDeviceTile({
     required UserDevice device,
     required bool isPhone,
     required bool isActive,
@@ -1631,10 +1785,7 @@ class PairedDevicesScreen extends StatelessWidget {
               shape: shape,
               borderRadius: borderRadius,
               border: isPhone
-                  ? Border.all(
-                      color: Theme.of(context).colorScheme.onSurface,
-                      width: 2,
-                    )
+                  ? Border.all(color: Colors.white, width: 2)
                   : null,
               gradient: isPhone
                   ? null
@@ -1645,13 +1796,7 @@ class PairedDevicesScreen extends StatelessWidget {
                       ],
                     ),
             ),
-            child: isPhone
-                ? Icon(
-                    Icons.smartphone,
-                    size: 24,
-                    color: Theme.of(context).colorScheme.onSurface,
-                  )
-                : null,
+            child: isPhone ? const Icon(Icons.smartphone, size: 24) : null,
           ),
           const SizedBox(width: 20),
           Expanded(
@@ -1663,20 +1808,15 @@ class PairedDevicesScreen extends StatelessWidget {
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 18,
-                    color: isActive
-                        ? kAccentColor
-                        : Theme.of(context).colorScheme.onSurface,
+                    color: isActive ? kAccentColor : Colors.white,
                   ),
                 ),
                 if (device.status == "Resetting...")
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
+                  const Padding(
+                    padding: EdgeInsets.only(top: 4),
                     child: Text(
                       "Resetting...",
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        fontSize: 12,
-                      ),
+                      style: TextStyle(color: Colors.grey, fontSize: 12),
                     ),
                   ),
                 const SizedBox(height: 4),
@@ -1684,13 +1824,9 @@ class PairedDevicesScreen extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     if (device.isUsbConnected)
-                      Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: Icon(
-                          Icons.usb,
-                          size: 16,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+                      const Padding(
+                        padding: EdgeInsets.only(right: 8),
+                        child: Icon(Icons.usb, size: 16, color: Colors.white70),
                       ),
                     GestureDetector(
                       onTap: onTheftToggle,
@@ -1701,9 +1837,7 @@ class PairedDevicesScreen extends StatelessWidget {
                           size: 16,
                           color: device.isTheftDetector
                               ? kSuccessGreen
-                              : Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant.withOpacity(0.3),
+                              : Colors.grey.withOpacity(0.3),
                         ),
                       ),
                     ),
@@ -2161,14 +2295,6 @@ class _VehicleSelectionScreenState extends State<VehicleSelectionScreen> {
     );
   }
 
-  void _onSearchChanged(String query) {
-    setState(() {
-      _filteredVehicles = kAllVehicles
-          .where((v) => v.name.toLowerCase().contains(query.toLowerCase()))
-          .toList();
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final model = SereneStateProvider.of(context);
@@ -2511,11 +2637,15 @@ class _SpeakerCountScreenState extends State<SpeakerCountScreen> {
     borderRadius: BorderRadius.circular(50),
     child: Container(
       padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
-        color: kSliderContainerColor,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
         shape: BoxShape.circle,
       ),
-      child: Icon(icon, size: 32, color: Colors.white),
+      child: Icon(
+        icon,
+        size: 32,
+        color: Theme.of(context).colorScheme.onSurface,
+      ),
     ),
   );
 }
@@ -2638,11 +2768,15 @@ class _DeviceCountScreenState extends State<DeviceCountScreen> {
     borderRadius: BorderRadius.circular(50),
     child: Container(
       padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
-        color: kSliderContainerColor,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
         shape: BoxShape.circle,
       ),
-      child: Icon(icon, size: 32, color: Colors.white),
+      child: Icon(
+        icon,
+        size: 32,
+        color: Theme.of(context).colorScheme.onSurface,
+      ),
     ),
   );
 }
@@ -2697,18 +2831,21 @@ class PlacementInstructionsScreen extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: kCardColor,
+                    color: Theme.of(context).cardColor,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.white10),
+                    border: Border.all(color: Theme.of(context).dividerColor),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Row(
+                      Row(
                         children: [
                           Icon(
                             Icons.tips_and_updates_outlined,
-                            color: Colors.yellow,
+                            color:
+                                Theme.of(context).brightness == Brightness.light
+                                ? Colors.orange
+                                : Colors.yellow,
                             size: 28,
                           ),
                           SizedBox(width: 12),
@@ -2724,10 +2861,10 @@ class PlacementInstructionsScreen extends StatelessWidget {
                       const SizedBox(height: 16),
                       Text(
                         instructions,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 16,
                           height: 1.6,
-                          color: Color(0xFFE0E0E0),
+                          color: Theme.of(context).colorScheme.onSurface,
                         ),
                       ),
                     ],
@@ -2939,164 +3076,92 @@ class _ConfigurationScreenState extends State<ConfigurationScreen> {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          SereneCard(
-            padding: EdgeInsets.zero,
-            child: Column(
-              children: [
+          SereneSection(
+            children: [
+              _buildToggleRow(
+                "Dark Mode",
+                "Enable dark theme",
+                Theme.of(context).brightness == Brightness.dark,
+                (v) {
+                  final model = SereneStateProvider.of(context);
+                  model.setThemeMode(v ? ThemeMode.dark : ThemeMode.light);
+                },
+              ),
+              _buildToggleRow(
+                "Wireless Android Auto",
+                "Enable wireless android auto to cars\nthat have wired android auto exclusively",
+                wirelessAndroidAuto,
+                (v) => setState(() => wirelessAndroidAuto = v),
+              ),
+              if (Platform.isAndroid)
                 _buildToggleRow(
-                  "Dark Mode",
-                  "Enable dark theme",
-                  Theme.of(context).brightness == Brightness.dark,
+                  "Material You",
+                  "Use system dynamic colors and theming",
+                  SereneStateProvider.of(context).useMaterialYou,
                   (v) {
                     final model = SereneStateProvider.of(context);
-                    model.setThemeMode(v ? ThemeMode.dark : ThemeMode.light);
+                    model.setUseMaterialYou(v);
                   },
                 ),
-                if (Platform.isAndroid) ...[
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Divider(
-                      height: 1,
-                      color: Theme.of(context).dividerColor,
-                    ),
-                  ),
-                  _buildToggleRow(
-                    "Material You",
-                    "Use system colors",
-                    SereneStateProvider.of(context).useMaterialYou,
-                    (v) {
-                      final model = SereneStateProvider.of(context);
-                      model.setUseMaterialYou(v);
-                    },
-                  ),
-                ],
+            ],
+          ),
+          const SizedBox(height: 12),
+          SereneSection(
+            children: [
+              _buildToggleRow(
+                "Loudness Alerts",
+                "Notify when surrounding sound\nexceeds safe levels",
+                loudnessAlerts,
+                (v) => setState(() => loudnessAlerts = v),
+              ),
+              if (loudnessAlerts)
+                _buildToggleRow(
+                  "Sound Notifications",
+                  "Notify using sound in addition to push\nnotifications",
+                  soundNotifs,
+                  (v) => setState(() => soundNotifs = v),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SereneSection(
+            children: [
+              _buildToggleRow(
+                "Theft Protection",
+                "Alert and start immediate tracking when\ndriving is detected at unusual hours",
+                theftProtection,
+                (v) => setState(() => theftProtection = v),
+              ),
+              if (theftProtection)
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Divider(
-                    height: 1,
-                    color: Theme.of(context).dividerColor,
-                  ),
-                ),
-                _buildToggleRow(
-                  "Wireless Android Auto",
-                  "Enable wireless android auto to cars\nthat have wired android auto exclusively",
-                  wirelessAndroidAuto,
-                  (v) => setState(() => wirelessAndroidAuto = v),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          SereneCard(
-            padding: EdgeInsets.zero,
-            child: Column(
-              children: [
-                _buildToggleRow(
-                  "Loudness Alerts",
-                  "Notify when surrounding sound\nexceeds safe levels",
-                  loudnessAlerts,
-                  (v) => setState(() => loudnessAlerts = v),
-                ),
-                if (loudnessAlerts) ...[
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Divider(
-                      height: 1,
-                      color: Colors.white.withOpacity(0.05),
-                    ),
-                  ),
-                  _buildToggleRow(
-                    "Sound Notifications",
-                    "Notify using sound in addition to push\nnotifications",
-                    soundNotifs,
-                    (v) => setState(() => soundNotifs = v),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          SereneCard(
-            padding: EdgeInsets.zero,
-            child: Column(
-              children: [
-                _buildToggleRow(
-                  "Theft Protection",
-                  "Alert and start immediate tracking when\ndriving is detected at unusual hours",
-                  theftProtection,
-                  (v) => setState(() => theftProtection = v),
-                ),
-                if (theftProtection) ...[
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Divider(
-                      height: 1,
-                      color: Colors.white.withOpacity(0.05),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          "Set Unusual Hours",
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "Set Unusual Hours",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
                         ),
-                        const SizedBox(height: 12),
-                        const Text(
-                          "Start:",
-                          style: TextStyle(color: kTextSecondary),
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        "Start:",
+                        style: TextStyle(color: kTextSecondary),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF37474F),
+                          borderRadius: BorderRadius.circular(30),
                         ),
-                        const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF37474F),
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              GestureDetector(
-                                onTap: () => _selectTime(true),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 8,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.9),
-                                    borderRadius: BorderRadius.circular(24),
-                                  ),
-                                  child: Text(
-                                    startTime.format(context),
-                                    style: const TextStyle(
-                                      color: Colors.black,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              _buildDaySelector(),
-                              const SizedBox(width: 12),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        const Text(
-                          "End:",
-                          style: TextStyle(color: kTextSecondary),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             GestureDetector(
-                              onTap: () => _selectTime(false),
+                              onTap: () => _selectTime(true),
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 16,
@@ -3107,7 +3172,7 @@ class _ConfigurationScreenState extends State<ConfigurationScreen> {
                                   borderRadius: BorderRadius.circular(24),
                                 ),
                                 child: Text(
-                                  endTime.format(context),
+                                  startTime.format(context),
                                   style: const TextStyle(
                                     color: Colors.black,
                                     fontWeight: FontWeight.bold,
@@ -3115,14 +3180,46 @@ class _ConfigurationScreenState extends State<ConfigurationScreen> {
                                 ),
                               ),
                             ),
+                            const SizedBox(width: 12),
+                            _buildDaySelector(),
+                            const SizedBox(width: 12),
                           ],
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        "End:",
+                        style: TextStyle(color: kTextSecondary),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          GestureDetector(
+                            onTap: () => _selectTime(false),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.9),
+                                borderRadius: BorderRadius.circular(24),
+                              ),
+                              child: Text(
+                                endTime.format(context),
+                                style: const TextStyle(
+                                  color: Colors.black,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                ],
-              ],
-            ),
+                ),
+            ],
           ),
           const SizedBox(height: 24),
           SereneCard(
@@ -3213,8 +3310,12 @@ class _ConfigurationScreenState extends State<ConfigurationScreen> {
             },
             activeColor: const Color(0xFF455A64),
             activeTrackColor: const Color(0xFF80CBC4),
-            inactiveThumbColor: Colors.grey,
-            inactiveTrackColor: Theme.of(context).disabledColor,
+            inactiveThumbColor: Theme.of(context).brightness == Brightness.light
+                ? Colors.grey.shade600
+                : Colors.grey,
+            inactiveTrackColor: Theme.of(context).brightness == Brightness.light
+                ? Colors.grey.shade300
+                : Theme.of(context).disabledColor,
           ),
         ),
       ],
@@ -3254,6 +3355,7 @@ class _ConfigurationScreenState extends State<ConfigurationScreen> {
 
   Widget _buildModernConnectionChip(IconData icon, String label) {
     bool isSelected = selectedConnection == label;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Expanded(
       child: GestureDetector(
         onTap: () {
@@ -3264,23 +3366,31 @@ class _ConfigurationScreenState extends State<ConfigurationScreen> {
           duration: const Duration(milliseconds: 200),
           height: 60,
           decoration: BoxDecoration(
-            color: isSelected ? kAccentColor : kSliderContainerColor,
+            color: isSelected
+                ? (isDark ? kAccentColor : kLightAccentColor)
+                : Theme.of(context).colorScheme.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(30),
-            border: isSelected ? null : Border.all(color: Colors.white12),
+            border: isSelected
+                ? null
+                : Border.all(color: Theme.of(context).dividerColor),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
                 icon,
-                color: isSelected ? Colors.black87 : Colors.white70,
+                color: isSelected
+                    ? (isDark ? Colors.black87 : Colors.white)
+                    : Theme.of(context).colorScheme.onSurface,
                 size: 22,
               ),
               const SizedBox(width: 8),
               Text(
                 label,
                 style: TextStyle(
-                  color: isSelected ? Colors.black87 : Colors.white70,
+                  color: isSelected
+                      ? (isDark ? Colors.black87 : Colors.white)
+                      : Theme.of(context).colorScheme.onSurface,
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
                 ),
@@ -3333,7 +3443,6 @@ class VehicleScreen extends StatelessWidget {
                   _buildVehicleHeader(context, v.name),
                   ...vehicleDevices.map(
                     (d) => _buildVehicleDeviceRow(
-                      context,
                       name: d.name,
                       shape:
                           d.model.contains("Mini") || d.model.contains("Core")
@@ -3355,14 +3464,12 @@ class VehicleScreen extends StatelessWidget {
                       trailing: Row(
                         children: [
                           if (d.isUsbConnected)
-                            Padding(
-                              padding: const EdgeInsets.only(right: 8),
+                            const Padding(
+                              padding: EdgeInsets.only(right: 8),
                               child: Icon(
                                 Icons.usb,
                                 size: 18,
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
+                                color: Colors.white,
                               ),
                             ),
                           if (d.isTheftDetector)
@@ -3400,22 +3507,14 @@ class VehicleScreen extends StatelessWidget {
               context,
               MaterialPageRoute(builder: (c) => const AddDeviceScreen()),
             ),
-            child: Row(
+            child: const Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   "Add New Vehicle",
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: Theme.of(context).colorScheme.onSurface,
-                  ),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                 ),
-                Icon(
-                  Icons.add,
-                  size: 30,
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
+                Icon(Icons.add, size: 30),
               ],
             ),
           ),
@@ -3426,7 +3525,12 @@ class VehicleScreen extends StatelessWidget {
 
   Widget _buildVehicleHeader(BuildContext context, String name) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+    decoration: BoxDecoration(
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      border: Border(
+        bottom: BorderSide(color: Theme.of(context).dividerColor, width: 1),
+      ),
+    ),
     child: Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -3435,15 +3539,20 @@ class VehicleScreen extends StatelessWidget {
           style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 16,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
         ),
-        const Icon(Icons.shield_outlined, color: kSuccessGreen, size: 20),
+        Icon(
+          Icons.shield_outlined,
+          color: Theme.of(context).brightness == Brightness.light
+              ? kLightSuccessGreen
+              : kSuccessGreen,
+          size: 20,
+        ),
       ],
     ),
   );
-  Widget _buildVehicleDeviceRow(
-    BuildContext context, {
+  Widget _buildVehicleDeviceRow({
     required String name,
     required BoxShape shape,
     required Color color,
@@ -3466,11 +3575,7 @@ class VehicleScreen extends StatelessWidget {
         const SizedBox(width: 16),
         Text(
           name,
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 14,
-            color: Theme.of(context).colorScheme.onSurface,
-          ),
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
         ),
         const Spacer(),
         trailing,
@@ -3484,6 +3589,483 @@ class SoundScreen extends StatelessWidget {
   const SoundScreen({super.key});
   @override
   Widget build(BuildContext context) => const VehicleScreen(); // Visual reuse as requested
+}
+
+// --- THEFT PROTECTION SCREEN ---
+class TheftProtectionScreen extends StatefulWidget {
+  const TheftProtectionScreen({super.key});
+
+  @override
+  State<TheftProtectionScreen> createState() => _TheftProtectionScreenState();
+}
+
+class _TheftProtectionScreenState extends State<TheftProtectionScreen> {
+  @override
+  Widget build(BuildContext context) {
+    final state = SereneStateProvider.of(context);
+    final theme = Theme.of(context);
+
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          'Theft Protection',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: Colors.transparent,
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          if (state.vehicles.isEmpty)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(40),
+                child: Text(
+                  'No vehicles configured',
+                  style: TextStyle(
+                    color: theme.colorScheme.onSurface.withOpacity(0.6),
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            )
+          else
+            ...state.vehicles.map((vehicle) {
+              final isProtected = vehicle.isTheftProtectionActive;
+              final vehicleDevices = state.getDevicesForVehicle(vehicle.id);
+              final currentDevice = vehicleDevices
+                  .where((d) => d.isTheftDetector)
+                  .firstOrNull;
+              final eligibleDevices = vehicleDevices
+                  .where((d) => d.model != 'Phone')
+                  .toList();
+
+              return Column(
+                children: [
+                  SereneSection(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 16,
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.shield,
+                              color: isProtected
+                                  ? kAccentColor
+                                  : theme.colorScheme.onSurface.withOpacity(
+                                      0.4,
+                                    ),
+                              size: 28,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    vehicle.name,
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    vehicle.type.name.toUpperCase(),
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: kTextSecondary,
+                                    ),
+                                  ),
+                                  if (eligibleDevices.isEmpty)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 4),
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.warning_amber_rounded,
+                                            size: 14,
+                                            color: Colors.orange.shade300,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            'No devices available',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color: Colors.orange.shade300,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            Transform.scale(
+                              scale: 0.9,
+                              child: Switch(
+                                value: isProtected,
+                                onChanged: (value) {
+                                  HapticFeedback.lightImpact();
+                                  state.toggleVehicleTheftProtection(
+                                    vehicle.id,
+                                    value,
+                                  );
+                                },
+                                activeColor: const Color(0xFF455A64),
+                                activeTrackColor: const Color(0xFF80CBC4),
+                                inactiveThumbColor:
+                                    theme.brightness == Brightness.light
+                                    ? Colors.grey.shade600
+                                    : Colors.grey,
+                                inactiveTrackColor:
+                                    theme.brightness == Brightness.light
+                                    ? Colors.grey.shade300
+                                    : theme.disabledColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (isProtected) ...[
+                    const SizedBox(height: 12),
+                    SereneSection(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Detector Device',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              if (eligibleDevices.isEmpty)
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF37474F),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.info_outline,
+                                        size: 20,
+                                        color: Colors.orange.shade300,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      const Expanded(
+                                        child: Text(
+                                          'No devices available for theft detection',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: kTextSecondary,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              else
+                                InkWell(
+                                  onTap: () async {
+                                    HapticFeedback.lightImpact();
+                                    final selected = await showDialog<UserDevice>(
+                                      context: context,
+                                      builder: (context) => AlertDialog(
+                                        title: const Text(
+                                          'Select Theft Detector',
+                                        ),
+                                        content: SizedBox(
+                                          width: double.maxFinite,
+                                          child: ListView.builder(
+                                            shrinkWrap: true,
+                                            itemCount: eligibleDevices.length,
+                                            itemBuilder: (context, index) {
+                                              final device =
+                                                  eligibleDevices[index];
+                                              return RadioListTile<UserDevice>(
+                                                title: Text(device.name),
+                                                subtitle: Text(
+                                                  '${device.model} • ${device.batteryLevel.toInt()}%',
+                                                ),
+                                                value: device,
+                                                groupValue: currentDevice,
+                                                activeColor: const Color(
+                                                  0xFF80CBC4,
+                                                ),
+                                                onChanged: (device) {
+                                                  Navigator.pop(
+                                                    context,
+                                                    device,
+                                                  );
+                                                },
+                                              );
+                                            },
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                    if (selected != null) {
+                                      state.setTheftDetectorDevice(selected.id);
+                                    }
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF37474F),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.devices,
+                                          size: 20,
+                                          color: kTextSecondary,
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Text(
+                                            currentDevice?.name ??
+                                                'Not selected',
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                        ),
+                                        const Icon(
+                                          Icons.chevron_right,
+                                          color: kTextSecondary,
+                                          size: 20,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                ],
+              );
+            }),
+        ],
+      ),
+    );
+  }
+}
+
+// --- APP SETTINGS SCREEN ---
+class AppSettingsScreen extends StatefulWidget {
+  const AppSettingsScreen({super.key});
+
+  @override
+  State<AppSettingsScreen> createState() => _AppSettingsScreenState();
+}
+
+class _AppSettingsScreenState extends State<AppSettingsScreen> {
+  bool theftAlerts = true;
+  bool deviceAlerts = true;
+  bool updateNotifications = true;
+
+  @override
+  Widget build(BuildContext context) {
+    final state = SereneStateProvider.of(context);
+    final isAndroid = Platform.isAndroid;
+
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          'App Settings',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: Colors.transparent,
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          SereneSection(
+            children: [
+              _buildThemeSelector(context, state),
+              if (isAndroid)
+                _buildToggleRow(
+                  'Material You',
+                  'Use system color palette',
+                  state.useMaterialYou,
+                  (v) => state.setUseMaterialYou(v),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SereneSection(
+            children: [
+              _buildToggleRow(
+                'Theft Alerts',
+                'Get notified about theft attempts',
+                theftAlerts,
+                (v) => setState(() => theftAlerts = v),
+              ),
+              _buildToggleRow(
+                'Device Alerts',
+                'Battery and connection status',
+                deviceAlerts,
+                (v) => setState(() => deviceAlerts = v),
+              ),
+              _buildToggleRow(
+                'Update Notifications',
+                'Software and firmware updates',
+                updateNotifications,
+                (v) => setState(() => updateNotifications = v),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildToggleRow(
+    String title,
+    String subtitle,
+    bool value,
+    Function(bool) onChanged,
+  ) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+    child: Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                style: const TextStyle(fontSize: 12, color: kTextSecondary),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        Transform.scale(
+          scale: 0.9,
+          child: Switch(
+            value: value,
+            onChanged: (v) {
+              HapticFeedback.lightImpact();
+              onChanged(v);
+            },
+            activeColor: const Color(0xFF455A64),
+            activeTrackColor: const Color(0xFF80CBC4),
+            inactiveThumbColor: Theme.of(context).brightness == Brightness.light
+                ? Colors.grey.shade600
+                : Colors.grey,
+            inactiveTrackColor: Theme.of(context).brightness == Brightness.light
+                ? Colors.grey.shade300
+                : Theme.of(context).disabledColor,
+          ),
+        ),
+      ],
+    ),
+  );
+
+  Widget _buildThemeSelector(BuildContext context, SereneModel state) {
+    final theme = Theme.of(context);
+    final modes = {
+      ThemeMode.system: 'System',
+      ThemeMode.light: 'Light',
+      ThemeMode.dark: 'Dark',
+    };
+
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Theme Mode',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            decoration: BoxDecoration(
+              color: theme.brightness == Brightness.light
+                  ? Colors.grey.shade200
+                  : const Color(0xFF37474F),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: modes.entries.map((entry) {
+                final isSelected = entry.key == state.themeMode;
+                return Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      state.setThemeMode(entry.key);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? (theme.brightness == Brightness.light
+                                  ? Colors.white
+                                  : const Color(0xFF80CBC4))
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        entry.value,
+                        style: TextStyle(
+                          color: isSelected
+                              ? (theme.brightness == Brightness.light
+                                    ? Colors.black
+                                    : Colors.black)
+                              : (theme.brightness == Brightness.light
+                                    ? Colors.grey.shade700
+                                    : Colors.white70),
+                          fontWeight: isSelected
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 // --- SOFTWARE UPDATE SCREEN ---
@@ -3632,7 +4214,12 @@ class _SoftwareUpdateScreenState extends State<SoftwareUpdateScreen> {
     onChanged: onChanged,
     activeColor: kAccentColor,
     activeTrackColor: const Color(0xFF455A64),
-    inactiveTrackColor: Colors.black26,
+    inactiveThumbColor: Theme.of(context).brightness == Brightness.light
+        ? Colors.grey.shade600
+        : null,
+    inactiveTrackColor: Theme.of(context).brightness == Brightness.light
+        ? Colors.grey.shade300
+        : Colors.black26,
     contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
   );
   Widget _buildFirmwareRow(
