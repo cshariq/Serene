@@ -4,7 +4,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'dart:math';
 import 'dart:io' show Platform;
 import 'dart:convert';
+import 'dart:ui' show ImageFilter;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:battery_plus/battery_plus.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -82,9 +84,9 @@ class UserDevice {
 
 class UserVehicle {
   final String id;
-  final String name;
+  String name;
   final VehicleType type;
-  final int speakerCount;
+  int speakerCount;
   bool isTheftProtectionActive;
   double ancLevel;
 
@@ -195,6 +197,24 @@ class SereneModel extends ChangeNotifier {
     final index = _vehicles.indexWhere((v) => v.id == vehicleId);
     if (index != -1) {
       _vehicles[index].ancLevel = level;
+      saveData();
+      notifyListeners();
+    }
+  }
+
+  void updateSpeakerCount(String vehicleId, int count) {
+    final index = _vehicles.indexWhere((v) => v.id == vehicleId);
+    if (index != -1) {
+      _vehicles[index].speakerCount = count;
+      saveData();
+      notifyListeners();
+    }
+  }
+
+  void updateVehicleName(String vehicleId, String name) {
+    final index = _vehicles.indexWhere((v) => v.id == vehicleId);
+    if (index != -1) {
+      _vehicles[index].name = name;
       saveData();
       notifyListeners();
     }
@@ -688,6 +708,13 @@ class SereneApp extends StatelessWidget {
             ? lightColorScheme.surfaceContainer
             : kLightCardColor,
         colorScheme: lightColorScheme,
+        appBarTheme: const AppBarTheme(
+          systemOverlayStyle: SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: Brightness.dark,
+            statusBarBrightness: Brightness.light,
+          ),
+        ),
         timePickerTheme: TimePickerThemeData(
           backgroundColor: model.useMaterialYou
               ? lightColorScheme.surfaceContainer
@@ -722,6 +749,13 @@ class SereneApp extends StatelessWidget {
             ? darkColorScheme.surfaceContainer
             : kCardColor,
         colorScheme: darkColorScheme,
+        appBarTheme: const AppBarTheme(
+          systemOverlayStyle: SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: Brightness.light,
+            statusBarBrightness: Brightness.dark,
+          ),
+        ),
         timePickerTheme: TimePickerThemeData(
           backgroundColor: model.useMaterialYou
               ? darkColorScheme.surfaceContainer
@@ -823,11 +857,11 @@ class BatteryPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 60,
-      height: 24,
+      width: 65,
+      height: 25,
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(14),
+        color: const Color.fromARGB(255, 128, 128, 128).withOpacity(0.5),
+        borderRadius: BorderRadius.circular(20),
       ),
       clipBehavior: Clip.antiAlias,
       child: Stack(
@@ -892,7 +926,7 @@ class MorphingThumbShape extends SliderComponentShape {
       ..color = sliderTheme.thumbColor!
       ..style = PaintingStyle.fill;
     final Path shadowPath = Path();
-    if (isAtEdge)
+    if (isAtEdge) {
       shadowPath.addOval(
         Rect.fromCenter(
           center: center,
@@ -900,17 +934,18 @@ class MorphingThumbShape extends SliderComponentShape {
           height: thumbHeight,
         ),
       );
-    else
+    } else {
       shadowPath.addRRect(
         RRect.fromRectAndRadius(
           Rect.fromCenter(center: center, width: 24, height: thumbHeight),
           const Radius.circular(20),
         ),
       );
+    }
     canvas.drawShadow(shadowPath, Colors.black.withOpacity(0.3), 3.0, true);
-    if (isAtEdge)
+    if (isAtEdge) {
       canvas.drawCircle(center, thumbHeight / 2, paint);
-    else {
+    } else {
       canvas.drawRRect(
         RRect.fromRectAndRadius(
           Rect.fromCenter(center: center, width: 24, height: thumbHeight),
@@ -977,9 +1012,9 @@ class SereneSection extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     children: List.generate(children.length, (index) {
       BorderRadius radius;
-      if (children.length == 1)
+      if (children.length == 1) {
         radius = BorderRadius.circular(24);
-      else if (index == 0)
+      } else if (index == 0)
         radius = const BorderRadius.vertical(top: Radius.circular(24));
       else if (index == children.length - 1)
         radius = const BorderRadius.vertical(bottom: Radius.circular(24));
@@ -1041,6 +1076,26 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
+  final Battery _battery = Battery();
+  int _phoneBatteryLevel = 100;
+
+  @override
+  void initState() {
+    super.initState();
+    _updatePhoneBattery();
+  }
+
+  Future<void> _updatePhoneBattery() async {
+    try {
+      final level = await _battery.batteryLevel;
+      setState(() {
+        _phoneBatteryLevel = level;
+      });
+    } catch (e) {
+      // If battery info is not available, use default
+    }
+  }
+
   String getStatusLabel(double val) {
     if (val == 0) return "ANC Deactivated";
     if (val == 10) return "Full ANC Active";
@@ -1133,9 +1188,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        flexibleSpace: ClipRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
+              color: Theme.of(context).scaffoldBackgroundColor.withOpacity(0.7),
+            ),
+          ),
+        ),
         leading: IconButton(
           icon: const Icon(Icons.devices_other_outlined),
           onPressed: () => Navigator.push(
@@ -1156,9 +1220,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.symmetric(horizontal: 20),
         child: Column(
           children: [
+            SizedBox(
+              height: MediaQuery.of(context).padding.top + kToolbarHeight + 40,
+            ),
             Container(
               height: 260,
               decoration: BoxDecoration(
@@ -1182,7 +1249,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Column(
                 children: [
                   BatteryPill(
-                    percentage: (activeDevice.batteryLevel * 100).toInt(),
+                    percentage: activeDevice.model == 'Phone'
+                        ? _phoneBatteryLevel
+                        : (activeDevice.batteryLevel * 100).toInt(),
                   ),
                   const SizedBox(height: 8),
                 ],
@@ -1200,7 +1269,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
-                  vertical: 6,
+                  vertical: 10,
                 ),
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -1286,9 +1355,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
 
-            const SizedBox(height: 32),
+            const SizedBox(height: 20),
             SereneCard(
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
               child: Column(
                 children: [
                   Text(
@@ -1378,7 +1447,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 16),
             SereneSection(
               children: [
                 _buildMenuRow(
@@ -1439,6 +1507,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ],
             ),
+            const SizedBox(height: 32),
           ],
         ),
       ),
@@ -1563,7 +1632,7 @@ class PairedDevicesScreen extends StatelessWidget {
         ? model.getDevicesForVehicle(currentVehicle.id)
         : <UserDevice>[];
 
-    void _showDeviceOptions(UserDevice device) {
+    void showDeviceOptions(UserDevice device) {
       showModalBottomSheet(
         context: context,
         backgroundColor: Theme.of(context).cardColor,
@@ -1658,7 +1727,7 @@ class PairedDevicesScreen extends StatelessWidget {
                     model.setActiveDevice(device.id);
                     Navigator.pop(context); // RETURN TO DASHBOARD
                   },
-                  onLongPress: () => _showDeviceOptions(device),
+                  onLongPress: () => showDeviceOptions(device),
                   child: Container(
                     color: isActive ? kAccentColor.withOpacity(0.05) : null,
                     child: _buildDeviceTile(
@@ -2093,7 +2162,7 @@ class _ConnectingScreenState extends State<ConnectingScreen> {
   void initState() {
     super.initState();
     Future.delayed(const Duration(seconds: 2), () {
-      if (mounted)
+      if (mounted) {
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -2103,6 +2172,7 @@ class _ConnectingScreenState extends State<ConnectingScreen> {
             ),
           ),
         );
+      }
     });
   }
 
@@ -2164,7 +2234,7 @@ class _SetupProgressScreenState extends State<SetupProgressScreen> {
   void initState() {
     super.initState();
     Future.delayed(const Duration(seconds: 2), () {
-      if (mounted)
+      if (mounted) {
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -2174,6 +2244,7 @@ class _SetupProgressScreenState extends State<SetupProgressScreen> {
             ),
           ),
         );
+      }
     });
   }
 
@@ -2724,8 +2795,9 @@ class _DeviceCountScreenState extends State<DeviceCountScreen> {
                   ),
                 ),
                 _buildCountButton(Icons.add, () {
-                  if (canAddMultiple && deviceCount < 12)
+                  if (canAddMultiple && deviceCount < 12) {
                     setState(() => deviceCount++);
+                  }
                 }),
               ],
             ),
@@ -2801,10 +2873,10 @@ class PlacementInstructionsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     String instructions =
         "Distribute the $deviceCount devices evenly throughout the cabin near the main speakers.";
-    if (isPhone)
+    if (isPhone) {
       instructions =
           "Since you are using this phone as the primary sensor, ensure it is placed in a secure phone mount on the dashboard or center console.";
-    else if (deviceCount == 1)
+    } else if (deviceCount == 1)
       instructions =
           "Place the device on the ceiling lining, centered directly above the front armrest/center console.";
 
@@ -3050,13 +3122,15 @@ class _ConfigurationScreenState extends State<ConfigurationScreen> {
       context: context,
       initialTime: isStart ? startTime : endTime,
     );
-    if (picked != null)
+    if (picked != null) {
       setState(() {
-        if (isStart)
+        if (isStart) {
           startTime = picked;
-        else
+        } else {
           endTime = picked;
+        }
       });
+    }
   }
 
   @override
@@ -3308,7 +3382,7 @@ class _ConfigurationScreenState extends State<ConfigurationScreen> {
               HapticFeedback.lightImpact();
               onChanged(v);
             },
-            activeColor: const Color(0xFF455A64),
+            activeThumbColor: const Color(0xFF455A64),
             activeTrackColor: const Color(0xFF80CBC4),
             inactiveThumbColor: Theme.of(context).brightness == Brightness.light
                 ? Colors.grey.shade600
@@ -3331,10 +3405,11 @@ class _ConfigurationScreenState extends State<ConfigurationScreen> {
           onTap: () {
             HapticFeedback.lightImpact();
             setState(() {
-              if (isSelected)
+              if (isSelected) {
                 selectedDays.remove(index);
-              else
+              } else {
                 selectedDays.add(index);
+              }
             });
           },
           child: Padding(
@@ -3404,8 +3479,313 @@ class _ConfigurationScreenState extends State<ConfigurationScreen> {
 }
 
 // --- VEHICLE SCREEN (Dynamic List) ---
-class VehicleScreen extends StatelessWidget {
+class VehicleScreen extends StatefulWidget {
   const VehicleScreen({super.key});
+  @override
+  State<VehicleScreen> createState() => _VehicleScreenState();
+}
+
+class _VehicleScreenState extends State<VehicleScreen> {
+  void _showEditDialog(
+    BuildContext context,
+    UserVehicle vehicle,
+    SereneModel model,
+  ) {
+    final nameController = TextEditingController(text: vehicle.name);
+    int speakerCount = vehicle.speakerCount;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final theme = Theme.of(context);
+          final isDark = theme.brightness == Brightness.dark;
+
+          return BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+            child: Container(
+              margin: EdgeInsets.only(
+                top: MediaQuery.of(context).size.height * 0.15,
+              ),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? Colors.black.withOpacity(0.7)
+                    : Colors.white.withOpacity(0.85),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(32),
+                ),
+                border: Border.all(
+                  color: isDark
+                      ? Colors.white.withOpacity(0.1)
+                      : Colors.black.withOpacity(0.05),
+                  width: 1,
+                ),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Handle bar
+                  Container(
+                    margin: const EdgeInsets.only(top: 12),
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.onSurface.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Header
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: kAccentColor.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Icon(
+                                Icons.directions_car,
+                                color: kAccentColor,
+                                size: 28,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "Edit Vehicle",
+                                    style: GoogleFonts.inter(
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    "Update your vehicle settings",
+                                    style: TextStyle(
+                                      color: theme.colorScheme.onSurfaceVariant,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 28),
+
+                        // Vehicle Name Field
+                        Text(
+                          "VEHICLE NAME",
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1.2,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: TextField(
+                            controller: nameController,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                            ),
+                            decoration: InputDecoration(
+                              hintText: "Enter vehicle name",
+                              prefixIcon: Icon(
+                                Icons.edit_outlined,
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                              border: InputBorder.none,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 16,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Speaker Count
+                        Text(
+                          "SPEAKER COUNT",
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1.2,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 16,
+                          ),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.speaker,
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Text(
+                                  "$speakerCount speakers",
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: isDark
+                                      ? Colors.white.withOpacity(0.1)
+                                      : Colors.black.withOpacity(0.05),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  children: [
+                                    IconButton(
+                                      icon: Icon(
+                                        Icons.remove,
+                                        color: speakerCount > 2
+                                            ? theme.colorScheme.onSurface
+                                            : theme.colorScheme.onSurface
+                                                  .withOpacity(0.3),
+                                      ),
+                                      onPressed: speakerCount > 2
+                                          ? () => setDialogState(
+                                              () => speakerCount -= 2,
+                                            )
+                                          : null,
+                                    ),
+                                    Container(
+                                      width: 1,
+                                      height: 24,
+                                      color: theme.dividerColor,
+                                    ),
+                                    IconButton(
+                                      icon: Icon(
+                                        Icons.add,
+                                        color: theme.colorScheme.onSurface,
+                                      ),
+                                      onPressed: () => setDialogState(
+                                        () => speakerCount += 2,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 32),
+
+                        // Action Buttons
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Container(
+                                height: 56,
+                                decoration: BoxDecoration(
+                                  color:
+                                      theme.colorScheme.surfaceContainerHighest,
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: Text(
+                                    "Cancel",
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 16,
+                                      color: theme.colorScheme.onSurface,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Container(
+                                height: 56,
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [kSuccessGreen, kAccentColor],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  borderRadius: BorderRadius.circular(16),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: kAccentColor.withOpacity(0.3),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: TextButton(
+                                  onPressed: () {
+                                    HapticFeedback.lightImpact();
+                                    model.updateVehicleName(
+                                      vehicle.id,
+                                      nameController.text,
+                                    );
+                                    model.updateSpeakerCount(
+                                      vehicle.id,
+                                      speakerCount,
+                                    );
+                                    Navigator.pop(context);
+                                  },
+                                  child: const Text(
+                                    "Save Changes",
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 16,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(
+                          height: MediaQuery.of(context).viewInsets.bottom + 16,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final model = SereneStateProvider.of(context);
@@ -3438,69 +3818,155 @@ class VehicleScreen extends StatelessWidget {
           else
             ...vehicles.map((v) {
               final vehicleDevices = model.getDevicesForVehicle(v.id);
-              return SereneSection(
-                children: [
-                  _buildVehicleHeader(context, v.name),
-                  ...vehicleDevices.map(
-                    (d) => _buildVehicleDeviceRow(
-                      name: d.name,
-                      shape:
-                          d.model.contains("Mini") || d.model.contains("Core")
-                          ? BoxShape.rectangle
-                          : BoxShape.circle,
-                      color: d.color,
-                      radius: d.model.contains("Mini")
-                          ? BorderRadius.circular(10)
-                          : (d.model.contains("Core")
-                                ? const BorderRadius.only(
-                                    topRight: Radius.circular(20),
-                                    bottomRight: Radius.circular(20),
-                                  )
-                                : null),
-                      iconWidth:
-                          d.model.contains("Mini") || d.model.contains("Core")
-                          ? 16
-                          : 32,
-                      trailing: Row(
+              final deviceCount = vehicleDevices.length;
+              final hasHub = model.vehicleHasHub(v.id);
+              final hasCore = model.vehicleHasCore(v.id);
+              final theftActive = v.isTheftProtectionActive;
+              final ancStatus = _ancLabel(v.ancLevel);
+
+              return SereneCard(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header: Name + Edit button
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            v.name,
+                            style: GoogleFonts.inter(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w800,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          icon: const Icon(Icons.edit_outlined, size: 20),
+                          onPressed: () => _showEditDialog(context, v, model),
+                          tooltip: "Edit vehicle",
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Stats row with speaker pill
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _typeChip(context, v.type),
+                        GestureDetector(
+                          onTap: () => _showEditDialog(context, v, model),
+                          child: _statChip(
+                            context,
+                            Icons.speaker,
+                            "${v.speakerCount} speakers",
+                          ),
+                        ),
+                        _statChip(
+                          context,
+                          Icons.devices_other,
+                          "$deviceCount devices",
+                        ),
+                        if (hasHub) _statChip(context, Icons.device_hub, "Hub"),
+                        if (hasCore) _statChip(context, Icons.memory, "Core"),
+                        _statusChip(
+                          context,
+                          theftActive ? Icons.shield : Icons.shield_outlined,
+                          theftActive ? "Protected" : "Unprotected",
+                          theftActive,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+
+                    // ANC Status
+                    _sectionHeader(context, "ANC Status"),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
                         children: [
-                          if (d.isUsbConnected)
-                            const Padding(
-                              padding: EdgeInsets.only(right: 8),
-                              child: Icon(
-                                Icons.usb,
-                                size: 18,
-                                color: Colors.white,
+                          Icon(
+                            ancStatus.contains("Deactivated")
+                                ? Icons.volume_off
+                                : Icons.volume_up,
+                            size: 20,
+                            color: ancStatus.contains("Deactivated")
+                                ? Colors.grey
+                                : kAccentColor,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              ancStatus,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
                               ),
                             ),
-                          if (d.isTheftDetector)
-                            const Padding(
-                              padding: EdgeInsets.only(right: 8),
-                              child: Icon(
-                                Icons.shield_outlined,
-                                size: 18,
-                                color: kSuccessGreen,
-                              ),
-                            ),
-                          if (d.isHub)
-                            const Padding(
-                              padding: EdgeInsets.only(right: 8),
-                              child: Icon(
-                                Icons.device_hub,
-                                size: 18,
-                                color: kPurpleIcon,
-                              ),
-                            ),
-                          if (d.hasBattery)
-                            BatteryPill(
-                              percentage: (d.batteryLevel * 100).toInt(),
-                            ),
+                          ),
                         ],
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 20),
+
+                    // Devices
+                    _sectionHeader(context, "Devices"),
+                    const SizedBox(height: 10),
+                    ...vehicleDevices.map((d) => _deviceTile(context, d)),
+                    const SizedBox(height: 12),
+
+                    // Action links (compact)
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      alignment: WrapAlignment.center,
+                      children: [
+                        TextButton.icon(
+                          icon: const Icon(Icons.devices, size: 16),
+                          label: const Text(
+                            "Manage Devices",
+                            style: TextStyle(fontSize: 13),
+                          ),
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (c) => const PairedDevicesScreen(),
+                            ),
+                          ),
+                        ),
+                        TextButton.icon(
+                          icon: const Icon(Icons.shield_outlined, size: 16),
+                          label: const Text(
+                            "Theft Protection",
+                            style: TextStyle(fontSize: 13),
+                          ),
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (c) => const TheftProtectionScreen(),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               );
-            }).toList(),
+            }),
           const SizedBox(height: 24),
           SereneCard(
             onTap: () => Navigator.push(
@@ -3523,72 +3989,1028 @@ class VehicleScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildVehicleHeader(BuildContext context, String name) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+  String _ancLabel(double val) {
+    if (val == 0) return "ANC Deactivated";
+    if (val == 10) return "Full ANC Active";
+    if (val > 5) return "Wind + Road Noise ANC Active";
+    return "Road Noise ANC Active";
+  }
+
+  Widget _statChip(BuildContext context, IconData icon, String label) =>
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+            ),
+          ],
+        ),
+      );
+
+  Widget _statusChip(
+    BuildContext context,
+    IconData icon,
+    String label,
+    bool isActive,
+  ) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
     decoration: BoxDecoration(
-      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-      border: Border(
-        bottom: BorderSide(color: Theme.of(context).dividerColor, width: 1),
-      ),
+      color: isActive
+          ? kSuccessGreen.withOpacity(0.15)
+          : Theme.of(context).colorScheme.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(24),
+      border: isActive ? Border.all(color: kSuccessGreen, width: 1) : null,
     ),
     child: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      mainAxisSize: MainAxisSize.min,
       children: [
+        Icon(icon, size: 16, color: isActive ? kSuccessGreen : null),
+        const SizedBox(width: 8),
         Text(
-          name,
+          label,
           style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-            color: Theme.of(context).colorScheme.onSurface,
+            fontWeight: FontWeight.w700,
+            fontSize: 12,
+            color: isActive ? kSuccessGreen : null,
           ),
-        ),
-        Icon(
-          Icons.shield_outlined,
-          color: Theme.of(context).brightness == Brightness.light
-              ? kLightSuccessGreen
-              : kSuccessGreen,
-          size: 20,
         ),
       ],
     ),
   );
-  Widget _buildVehicleDeviceRow({
-    required String name,
-    required BoxShape shape,
-    required Color color,
-    required BorderRadius? radius,
-    required double iconWidth,
-    required Widget trailing,
-  }) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+
+  Widget _sectionHeader(BuildContext context, String title) => Text(
+    title,
+    style: GoogleFonts.inter(
+      fontSize: 13,
+      fontWeight: FontWeight.w700,
+      color: Theme.of(context).colorScheme.onSurfaceVariant,
+    ),
+  );
+
+  Widget _deviceTile(BuildContext context, UserDevice d) => Container(
+    margin: const EdgeInsets.only(bottom: 10),
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+    decoration: BoxDecoration(
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(16),
+    ),
     child: Row(
       children: [
         Container(
-          width: iconWidth,
-          height: 32,
+          width: 36,
+          height: 36,
           decoration: BoxDecoration(
-            color: color,
-            shape: shape,
-            borderRadius: radius,
+            color: d.color,
+            shape: d.model.contains("Mini") || d.model.contains("Core")
+                ? BoxShape.rectangle
+                : BoxShape.circle,
+            borderRadius: d.model.contains("Mini")
+                ? BorderRadius.circular(8)
+                : (d.model.contains("Core")
+                      ? const BorderRadius.only(
+                          topRight: Radius.circular(12),
+                          bottomRight: Radius.circular(12),
+                        )
+                      : null),
           ),
         ),
-        const SizedBox(width: 16),
-        Text(
-          name,
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                d.name,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                d.model,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
         ),
-        const Spacer(),
-        trailing,
+        if (d.isTheftDetector)
+          const Padding(
+            padding: EdgeInsets.only(right: 8),
+            child: Icon(Icons.shield_outlined, size: 18, color: kSuccessGreen),
+          ),
+        if (d.isHub)
+          const Padding(
+            padding: EdgeInsets.only(right: 8),
+            child: Icon(Icons.device_hub, size: 18, color: kPurpleIcon),
+          ),
+        if (d.hasBattery)
+          BatteryPill(percentage: (d.batteryLevel * 100).toInt()),
       ],
     ),
   );
+
+  Widget _typeChip(BuildContext context, VehicleType type) {
+    String label;
+    switch (type) {
+      case VehicleType.sedan:
+        label = "Sedan";
+        break;
+      case VehicleType.suv:
+        label = "SUV";
+        break;
+      case VehicleType.truck:
+        label = "Truck";
+        break;
+      case VehicleType.minivan:
+        label = "Minivan";
+        break;
+      case VehicleType.coupe:
+        label = "Coupe";
+        break;
+      case VehicleType.other:
+        label = "Other";
+        break;
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+      ),
+    );
+  }
 }
 
-// --- SOUND SCREEN (Reusing Vehicle List Style) ---
-class SoundScreen extends StatelessWidget {
+// --- SOUND SCREEN ---
+class SoundScreen extends StatefulWidget {
   const SoundScreen({super.key});
   @override
-  Widget build(BuildContext context) => const VehicleScreen(); // Visual reuse as requested
+  State<SoundScreen> createState() => _SoundScreenState();
+}
+
+class _SoundScreenState extends State<SoundScreen> {
+  // Sound settings state
+  bool bassBoost = false;
+  bool adaptiveSound = true;
+  bool spatialAudio = false;
+  double bassLevel = 0.5;
+  double trebleLevel = 0.5;
+  String selectedSoundProfile = "Balanced";
+  String? _selectedDeviceId;
+
+  // Models that have built-in speakers
+  static const List<String> _modelsWithSpeakers = [
+    "Serene Ultra",
+    "Serene Max",
+  ];
+
+  bool _deviceHasSpeaker(String model) => _modelsWithSpeakers.contains(model);
+
+  final List<Map<String, dynamic>> soundProfiles = [
+    {
+      "name": "Balanced",
+      "icon": Icons.equalizer,
+      "desc": "Natural sound balance",
+    },
+    {
+      "name": "Bass Boost",
+      "icon": Icons.graphic_eq,
+      "desc": "Enhanced low frequencies",
+    },
+    {"name": "Vocal", "icon": Icons.mic, "desc": "Clear voice and dialogue"},
+    {
+      "name": "Immersive",
+      "icon": Icons.surround_sound,
+      "desc": "360° spatial audio",
+    },
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final model = SereneStateProvider.of(context);
+    final currentVehicle = model.currentVehicle;
+    final theme = Theme.of(context);
+
+    if (currentVehicle == null) {
+      return Scaffold(
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new),
+            onPressed: () => Navigator.pop(context),
+          ),
+          title: const Text(
+            "Sound Settings",
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          backgroundColor: Colors.transparent,
+        ),
+        body: const Center(
+          child: Text(
+            "No vehicle selected",
+            style: TextStyle(color: kTextSecondary),
+          ),
+        ),
+      );
+    }
+
+    double ancLevel = currentVehicle.ancLevel;
+    bool isAtEdge = (ancLevel == 0 || ancLevel == 10);
+    double sliderHorizontalPadding = isAtEdge ? 0.0 : 20.0;
+
+    final vehicleDevices = model.getDevicesForVehicle(currentVehicle.id);
+
+    // Initialize selected device if not set
+    if (_selectedDeviceId == null && vehicleDevices.isNotEmpty) {
+      _selectedDeviceId = vehicleDevices.first.id;
+    }
+
+    final selectedDevice = vehicleDevices.firstWhere(
+      (d) => d.id == _selectedDeviceId,
+      orElse: () => vehicleDevices.isNotEmpty
+          ? vehicleDevices.first
+          : vehicleDevices.first,
+    );
+    final hasBuiltInSpeaker = _deviceHasSpeaker(selectedDevice.model);
+
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          "Sound Settings",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: Colors.transparent,
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          // Device Selector
+          _buildSectionHeader("Select Device"),
+          const SizedBox(height: 12),
+          Container(
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              children: vehicleDevices.map((device) {
+                final isSelected = device.id == _selectedDeviceId;
+                final hasSpeaker = _deviceHasSpeaker(device.model);
+                return InkWell(
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    setState(() => _selectedDeviceId = device.id);
+                  },
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? kAccentColor.withOpacity(0.1)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(16),
+                      border: isSelected
+                          ? Border.all(color: kAccentColor, width: 2)
+                          : null,
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: device.color,
+                            shape:
+                                device.model.contains("Mini") ||
+                                    device.model.contains("Core")
+                                ? BoxShape.rectangle
+                                : BoxShape.circle,
+                            borderRadius: device.model.contains("Mini")
+                                ? BorderRadius.circular(8)
+                                : (device.model.contains("Core")
+                                      ? const BorderRadius.only(
+                                          topRight: Radius.circular(12),
+                                          bottomRight: Radius.circular(12),
+                                        )
+                                      : null),
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                device.name,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 14,
+                                  color: isSelected ? kAccentColor : null,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Row(
+                                children: [
+                                  Text(
+                                    device.model,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: theme.colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                  if (hasSpeaker) ...[
+                                    const SizedBox(width: 8),
+                                    Icon(
+                                      Icons.speaker,
+                                      size: 14,
+                                      color: kSuccessGreen,
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (isSelected)
+                          Icon(
+                            Icons.check_circle,
+                            color: kAccentColor,
+                            size: 22,
+                          ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Notice for devices without speakers
+          if (!hasBuiltInSpeaker)
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: kWarningOrange.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: kWarningOrange.withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, color: kWarningOrange, size: 24),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          "No Built-in Speaker",
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          "${selectedDevice.model} doesn't have built-in speakers. Sound settings will modify your vehicle's speaker output via ANC processing.",
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(height: 24),
+
+          // Vehicle info
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.directions_car, color: kAccentColor, size: 24),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    currentVehicle.name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+                Text(
+                  "${currentVehicle.speakerCount} car speakers",
+                  style: TextStyle(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // ANC Section
+          _buildSectionHeader("Active Noise Cancellation"),
+          const SizedBox(height: 12),
+          SereneCard(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      _getAncLabel(ancLevel),
+                      style: GoogleFonts.inter(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: ancLevel > 0
+                            ? kSuccessGreen.withOpacity(0.15)
+                            : Colors.grey.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        ancLevel > 0 ? "Active" : "Off",
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                          color: ancLevel > 0 ? kSuccessGreen : Colors.grey,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      AnimatedPadding(
+                        duration: const Duration(milliseconds: 200),
+                        curve: Curves.easeOutBack,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: sliderHorizontalPadding,
+                        ),
+                        child: SliderTheme(
+                          data: SliderTheme.of(context).copyWith(
+                            activeTrackColor: Colors.transparent,
+                            inactiveTrackColor: Colors.transparent,
+                            thumbColor: WidgetStateColor.resolveWith(
+                              (states) => states.contains(WidgetState.dragged)
+                                  ? const Color(0xFFB2EBF2)
+                                  : kAccentColor,
+                            ),
+                            overlayColor: Colors.transparent,
+                            overlayShape: SliderComponentShape.noOverlay,
+                            trackHeight: 48,
+                            thumbShape: MorphingThumbShape(
+                              labelValue: ancLevel.round().toString(),
+                              isAtEdge: isAtEdge,
+                              thumbHeight: 48,
+                            ),
+                          ),
+                          child: Slider(
+                            value: ancLevel,
+                            min: 0,
+                            max: 10,
+                            divisions: 10,
+                            onChanged: (val) {
+                              if (val != ancLevel) {
+                                HapticFeedback.selectionClick();
+                                model.updateAncLevel(currentVehicle.id, val);
+                              }
+                            },
+                          ),
+                        ),
+                      ),
+                      IgnorePointer(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 11),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Icon(
+                                Icons.person_outline,
+                                color: ancLevel == 0
+                                    ? Colors.black
+                                    : Colors.grey,
+                                size: 24,
+                              ),
+                              Icon(
+                                Icons.blur_off,
+                                color: ancLevel == 10
+                                    ? Colors.black
+                                    : Colors.grey,
+                                size: 24,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "Transparency",
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        fontSize: 12,
+                      ),
+                    ),
+                    Text(
+                      "Full ANC",
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Sound Profiles
+          _buildSectionHeader("Sound Profile"),
+          const SizedBox(height: 12),
+          GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: 2,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            childAspectRatio: 1.4,
+            children: soundProfiles.map((profile) {
+              final isSelected = selectedSoundProfile == profile["name"];
+              return GestureDetector(
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  setState(() => selectedSoundProfile = profile["name"]);
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? kAccentColor.withOpacity(0.15)
+                        : theme.colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: isSelected ? kAccentColor : Colors.transparent,
+                      width: 2,
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Icon(
+                        profile["icon"],
+                        color: isSelected
+                            ? kAccentColor
+                            : theme.colorScheme.onSurfaceVariant,
+                        size: 28,
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            profile["name"],
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                              color: isSelected
+                                  ? kAccentColor
+                                  : theme.colorScheme.onSurface,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            profile["desc"],
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 24),
+
+          // Equalizer
+          _buildSectionHeader("Equalizer"),
+          const SizedBox(height: 12),
+          SereneCard(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              children: [
+                // Bass
+                Row(
+                  children: [
+                    SizedBox(
+                      width: 60,
+                      child: Text(
+                        "Bass",
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: SliderTheme(
+                        data: SliderTheme.of(context).copyWith(
+                          activeTrackColor: kAccentColor,
+                          inactiveTrackColor:
+                              theme.colorScheme.surfaceContainerHighest,
+                          thumbColor: kAccentColor,
+                          trackHeight: 6,
+                          thumbShape: const RoundSliderThumbShape(
+                            enabledThumbRadius: 8,
+                          ),
+                        ),
+                        child: Slider(
+                          value: bassLevel,
+                          onChanged: (val) {
+                            HapticFeedback.selectionClick();
+                            setState(() => bassLevel = val);
+                          },
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      width: 40,
+                      child: Text(
+                        "${(bassLevel * 100).round()}%",
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                        textAlign: TextAlign.right,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                // Treble
+                Row(
+                  children: [
+                    SizedBox(
+                      width: 60,
+                      child: Text(
+                        "Treble",
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: SliderTheme(
+                        data: SliderTheme.of(context).copyWith(
+                          activeTrackColor: kAccentColor,
+                          inactiveTrackColor:
+                              theme.colorScheme.surfaceContainerHighest,
+                          thumbColor: kAccentColor,
+                          trackHeight: 6,
+                          thumbShape: const RoundSliderThumbShape(
+                            enabledThumbRadius: 8,
+                          ),
+                        ),
+                        child: Slider(
+                          value: trebleLevel,
+                          onChanged: (val) {
+                            HapticFeedback.selectionClick();
+                            setState(() => trebleLevel = val);
+                          },
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      width: 40,
+                      child: Text(
+                        "${(trebleLevel * 100).round()}%",
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                        textAlign: TextAlign.right,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Audio Features
+          _buildSectionHeader("Audio Features"),
+          const SizedBox(height: 12),
+          SereneSection(
+            children: [
+              _buildToggleRow(
+                context,
+                "Adaptive Sound",
+                "Automatically adjust based on environment",
+                Icons.auto_awesome,
+                adaptiveSound,
+                (val) => setState(() => adaptiveSound = val),
+              ),
+              _buildToggleRow(
+                context,
+                "Spatial Audio",
+                "Immersive 3D sound experience",
+                Icons.surround_sound,
+                spatialAudio,
+                (val) => setState(() => spatialAudio = val),
+              ),
+              _buildToggleRow(
+                context,
+                "Bass Boost",
+                "Enhance low frequency output",
+                Icons.graphic_eq,
+                bassBoost,
+                (val) => setState(() => bassBoost = val),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // Speaker Test
+          _buildSectionHeader("Diagnostics"),
+          const SizedBox(height: 12),
+          SereneCard(
+            onTap: () {
+              HapticFeedback.lightImpact();
+              _showSpeakerTest(context, currentVehicle);
+            },
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: kAccentColor.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Icon(
+                    Icons.speaker_group,
+                    color: kAccentColor,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "Speaker Test",
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        "Test all ${currentVehicle.speakerCount} speakers",
+                        style: TextStyle(
+                          color: theme.colorScheme.onSurfaceVariant,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right, color: kTextSecondary),
+              ],
+            ),
+          ),
+          const SizedBox(height: 32),
+        ],
+      ),
+    );
+  }
+
+  String _getAncLabel(double val) {
+    if (val == 0) return "Transparency Mode";
+    if (val == 10) return "Full ANC";
+    if (val > 5) return "Wind + Road Noise ANC";
+    return "Road Noise ANC";
+  }
+
+  Widget _buildSectionHeader(String title) => Padding(
+    padding: const EdgeInsets.only(left: 4),
+    child: Text(
+      title.toUpperCase(),
+      style: TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 1.2,
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
+      ),
+    ),
+  );
+
+  Widget _buildToggleRow(
+    BuildContext context,
+    String title,
+    String subtitle,
+    IconData icon,
+    bool value,
+    Function(bool) onChanged,
+  ) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+    child: Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(
+            icon,
+            size: 20,
+            color: value ? kAccentColor : kTextSecondary,
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 15,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Transform.scale(
+          scale: 0.9,
+          child: Switch(
+            value: value,
+            onChanged: (val) {
+              HapticFeedback.lightImpact();
+              onChanged(val);
+            },
+            activeColor: const Color(0xFF455A64),
+            activeTrackColor: const Color(0xFF80CBC4),
+            inactiveThumbColor: Theme.of(context).brightness == Brightness.light
+                ? Colors.grey.shade600
+                : Colors.grey,
+            inactiveTrackColor: Theme.of(context).brightness == Brightness.light
+                ? Colors.grey.shade300
+                : Theme.of(context).disabledColor,
+          ),
+        ),
+      ],
+    ),
+  );
+
+  void _showSpeakerTest(BuildContext context, UserVehicle vehicle) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.black.withOpacity(0.7)
+                : Colors.white.withOpacity(0.85),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Icon(Icons.speaker_group, size: 48, color: kAccentColor),
+              const SizedBox(height: 16),
+              Text(
+                "Speaker Test",
+                style: GoogleFonts.inter(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                "Test all ${vehicle.speakerCount} speakers in your ${vehicle.name}",
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              PrimaryButton(
+                text: "Start Test",
+                onPressed: () {
+                  HapticFeedback.lightImpact();
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Speaker test started..."),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Cancel"),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 // --- THEFT PROTECTION SCREEN ---
@@ -3719,7 +5141,7 @@ class _TheftProtectionScreenState extends State<TheftProtectionScreen> {
                                     value,
                                   );
                                 },
-                                activeColor: const Color(0xFF455A64),
+                                activeThumbColor: const Color(0xFF455A64),
                                 activeTrackColor: const Color(0xFF80CBC4),
                                 inactiveThumbColor:
                                     theme.brightness == Brightness.light
@@ -3982,7 +5404,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
               HapticFeedback.lightImpact();
               onChanged(v);
             },
-            activeColor: const Color(0xFF455A64),
+            activeThumbColor: const Color(0xFF455A64),
             activeTrackColor: const Color(0xFF80CBC4),
             inactiveThumbColor: Theme.of(context).brightness == Brightness.light
                 ? Colors.grey.shade600
@@ -4212,7 +5634,7 @@ class _SoftwareUpdateScreenState extends State<SoftwareUpdateScreen> {
     ),
     value: value,
     onChanged: onChanged,
-    activeColor: kAccentColor,
+    activeThumbColor: kAccentColor,
     activeTrackColor: const Color(0xFF455A64),
     inactiveThumbColor: Theme.of(context).brightness == Brightness.light
         ? Colors.grey.shade600

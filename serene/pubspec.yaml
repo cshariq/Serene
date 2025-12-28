@@ -36,6 +36,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   dynamic_color: ^1.8.1
   shared_preferences: ^2.3.5
+  battery_plus: ^7.0.0
 
 dev_dependencies:
   flutter_test:
