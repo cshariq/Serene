@@ -45,5 +45,15 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Serene needs Bluetooth to connect to your car's audio system and provide active noise cancellation.</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>Serene uses Bluetooth to communicate with your car's speakers for noise cancellation.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Serene needs microphone access to measure ambient noise and adjust the active noise cancellation accordingly.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Serene needs location access to scan for nearby Bluetooth devices in your car.</string>
+	<key>NSMotionUsageDescription</key>
+	<string>Serene uses motion sensors to enhance noise cancellation based on vehicle movement.</string>
 </dict>
 </plist>

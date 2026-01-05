@@ -37,6 +37,18 @@ dependencies:
   dynamic_color: ^1.8.1
   shared_preferences: ^2.3.5
   battery_plus: ^7.0.0
+  http: ^1.2.0
+  web_socket_channel: ^2.4.0
+  flutter_blue_plus: ^1.16.0
+  sensors_plus: ^7.0.0
+  audio_session: ^0.1.16
+  permission_handler: ^11.3.0
+  record: ^6.1.2
+  just_audio: ^0.9.39
+  path_provider: ^2.1.4
+
+dependency_overrides:
+  record_linux: ^1.0.0
 
 dev_dependencies:
   flutter_test:
@@ -48,6 +60,12 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.13.1
+
+flutter_icons:
+  image_path: "assets/icon/icon.png"
+  android: true
+  ios: true
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
