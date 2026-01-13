@@ -21,12 +21,12 @@ jobs:
 
       - name: Install dependencies
         working-directory: serene
-        run: dart pub get
+        run: flutter pub get
 
       - name:  Analyze project source
         working-directory: serene
-        run: dart analyze
+        run: flutter analyze
 
       - name: Run tests
         working-directory: serene
-        run: dart test
+        run: flutter test
