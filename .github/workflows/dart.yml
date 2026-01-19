@@ -1,0 +1,72 @@
+name: Flutter CI/CD
+
+on: 
+  push:
+    branches:  [ "main" ]
+    paths:
+      - "serene/**"
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - "serene/**"
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    
+    steps: 
+      - uses: actions/checkout@v4
+
+      - uses:  subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Install Flutter dependencies
+        working-directory: serene
+        run: flutter pub get
+
+      - name: Install Backend dependencies
+        working-directory: serene/backend
+        run: dart pub get
+
+      - name: Analyze project source
+        working-directory: serene
+        run: flutter analyze --no-fatal-infos
+
+      - name: Run tests
+        working-directory: serene
+        run: flutter test
+
+  build-and-release:
+    runs-on: ubuntu-latest
+    needs:  analyze
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with: 
+          channel: 'stable'
+
+      - name: Install dependencies
+        working-directory: serene
+        run: flutter pub get
+
+      - name: Build APK
+        working-directory: serene
+        run: flutter build apk --release
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: serene/build/app/outputs/flutter-apk/app-release.apk
+          generate_release_notes: true
+          draft:  false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets. GITHUB_TOKEN }}
