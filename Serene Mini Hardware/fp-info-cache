@@ -1,4 +1,4 @@
-27248256000047650
+27250026566196481
 ANC_Parts
 ADAU1787_Ultralib
 
@@ -20,6 +20,13 @@ Spark_SR1020_QFN28
 0
 45
 29
+ANC_Parts
+Spark_SR1120_QFN32
+
+
+0
+46
+33
 Audio_Module
 Reverb_BTDR-1H
 Digital Reverberation Unit, http://www.belton.co.kr/inc/downfile.php?seq=17&file=pdf (footprint from http://www.uk-electronic.de/PDF/BTDR-1.pdf)
