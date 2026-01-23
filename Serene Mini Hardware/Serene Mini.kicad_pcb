@@ -20887,6 +20887,17 @@
 			(uuid "635e085e-bc4a-44ca-a0a7-ca15131d9851")
 		)
 		(embedded_fonts no)
+		(model "${KIPRJMOD}/ANC_Parts.pretty/5034800500.STEP"
+			(offset
+				(xyz 0 0 0)
+			)
+			(scale
+				(xyz 1 1 1)
+			)
+			(rotate
+				(xyz 90 180 180)
+			)
+		)
 	)
 	(footprint "Capacitor_SMD:C_0402_1005Metric"
 		(layer "B.Cu")
