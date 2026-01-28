@@ -1,0 +1,10 @@
+﻿"Symbol";"Value";"Unit";
+"TraceParts.PartNumber";"90-09042024-072386";"";
+"REFERENCE";"2005280050";"";
+"TraceParts.PartTitle";"Easy-On";"";
+"TraceParts.InstanceId";"90-09042024-0723862N3XX9WWY2MK673V115V3T3RA";"";
+"SUPPLIER";"Molex";"";
+"DESIGN";"Easy-On FFC/FPC Connector, 1.00mm Pitch, FD19 Series, Right-Angle, Bottom Contact, 1.90mm Height, 5 Circuits, Gold over Nickel Plating";"";
+"TRACEPARTS";"TRACEPARTS";"";
+"TraceParts.PartLanguage";"en";"";
+"TraceParts.PartVersion";"1.0.2";"";
