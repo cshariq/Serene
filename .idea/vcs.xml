@@ -2,6 +2,7 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/Blueprint/Firmware + App/Serene App/hackatime-desktop" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/serene/hackatime-desktop" vcs="Git" />
   </component>
 </project>
