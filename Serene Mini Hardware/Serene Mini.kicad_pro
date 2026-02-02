@@ -37,9 +37,9 @@
         "other_text_thickness": 0.15,
         "other_text_upright": false,
         "pads": {
-          "drill": 0.0,
-          "height": 0.2286,
-          "width": 0.2286
+          "drill": 0.15,
+          "height": 0.25,
+          "width": 0.25
         },
         "silk_line_width": 0.1,
         "silk_text_italic": false,
@@ -96,11 +96,11 @@
           ""
         ],
         [
-          "shorting_items|26240707|57888270|10b6898b-7a2c-4d8a-a8cb-981b8f4baa9f|4da588bd-ee8f-4373-b0c8-5497417abd13",
+          "shorting_items|26240707|57888270|1d68aad9-73f4-483f-a419-aec84ff96f7c|4da588bd-ee8f-4373-b0c8-5497417abd13",
           ""
         ],
         [
-          "shorting_items|26240707|57888270|1d68aad9-73f4-483f-a419-aec84ff96f7c|4da588bd-ee8f-4373-b0c8-5497417abd13",
+          "shorting_items|26240707|57888270|4da588bd-ee8f-4373-b0c8-5497417abd13|bcb27c71-3840-4018-9478-f15dfea96778",
           ""
         ],
         [
@@ -168,7 +168,7 @@
           ""
         ],
         [
-          "solder_mask_bridge|26142998|57800001|4391b0a7-cd88-42e1-8941-d0c0f6c45c5e|10b6898b-7a2c-4d8a-a8cb-981b8f4baa9f",
+          "solder_mask_bridge|26142998|57800001|4391b0a7-cd88-42e1-8941-d0c0f6c45c5e|bcb27c71-3840-4018-9478-f15dfea96778",
           ""
         ],
         [
@@ -220,7 +220,7 @@
           ""
         ],
         [
-          "unconnected_items|26241792|58141616|F.Cu|4|64666486-bf03-4241-aaba-99ef8401c7a0|10b6898b-7a2c-4d8a-a8cb-981b8f4baa9f",
+          "unconnected_items|26241792|58141616|F.Cu|4|64666486-bf03-4241-aaba-99ef8401c7a0|bcb27c71-3840-4018-9478-f15dfea96778",
           ""
         ],
         [
