@@ -33,25 +33,22 @@ While a few very luxury cars offer ANC, we wanted to make ANC more accessible to
 ## 3D Model
 
 ### PCB:
-
-<img width="655" height="434" alt="image" src="https://github.com/user-attachments/assets/7ac86c27-29ce-4630-ba3a-70ae58f0bd60" />
-<img width="722" height="445" alt="image" src="https://github.com/user-attachments/assets/e35c6efb-e188-4985-9bd6-9fb9750783b0" />
-
+<img src="https://github.com/user-attachments/assets/7ac86c27-29ce-4630-ba3a-70ae58f0bd60" width="65%">
+<img src="https://github.com/user-attachments/assets/e35c6efb-e188-4985-9bd6-9fb9750783b0" width="65%">
 
 ### Casing:
-
-<img width="589" height="428" alt="image" src="https://github.com/user-attachments/assets/a1ef4850-2492-4c4f-aa21-fb156484d491" />
-<img width="729" height="626" alt="image" src="https://github.com/user-attachments/assets/13c21e6f-37f3-41f0-8109-21be4e4fdf20" />
+<img src="https://github.com/user-attachments/assets/a1ef4850-2492-4c4f-aa21-fb156484d491" width="60%">
+<img src="https://github.com/user-attachments/assets/13c21e6f-37f3-41f0-8109-21be4e4fdf20" width="60%">
 
 ---
 
 ## PCB
-<img width="500" height="890" alt="image" src="https://github.com/user-attachments/assets/b163734b-e3cd-4c76-bce3-792532eaf435" />
+<img src="https://github.com/user-attachments/assets/b163734b-e3cd-4c76-bce3-792532eaf435" width="35%">
 
 ---
 
 ## Wiring Diagram
-<img width="1318" height="931" alt="image" src="https://github.com/user-attachments/assets/f642dc4a-51fe-4a3d-9341-d7e705c53a9a" />
+<img src="https://github.com/user-attachments/assets/f642dc4a-51fe-4a3d-9341-d7e705c53a9a" width="75%">
 
 ---
 
@@ -117,27 +114,34 @@ While a few very luxury cars offer ANC, we wanted to make ANC more accessible to
 | Grand Total            | $393.43      |                                                                                                                                                                          |
 
 Amazon:
+
 <img width="507" height="285" alt="image" src="https://github.com/user-attachments/assets/e92a0cdc-b490-451f-ad90-d9e480f6f69a" />
 
 
 <img width="531" height="308" alt="image" src="https://github.com/user-attachments/assets/56fba184-d8d4-4598-8a8e-73e33f9c3967" />
 
 (6 layer manufacturing for Main PCB, less expensive)
+
 <img width="574" height="334" alt="image" src="https://github.com/user-attachments/assets/d77fcd5b-af47-46c3-8fe0-f54b75862d19" />
 
 (4 layer manufacturing for Main PCB)
+
 <img width="504" height="299" alt="image" src="https://github.com/user-attachments/assets/ba898d97-9c16-49fc-bb57-6ad5d3582e26" />
 
 Button PCB:
+
 <img width="439" height="251" alt="image" src="https://github.com/user-attachments/assets/7d6217e9-ba68-4d48-9b11-a7d160179512" />
 
 AliExpress:
+
 <img width="614" height="282" alt="image" src="https://github.com/user-attachments/assets/8f56cc2b-43ba-402c-80a0-56d51fad0760" />
 
 Vapcell:
+
 <img width="463" height="278" alt="image" src="https://github.com/user-attachments/assets/8452e4ad-b364-4ce4-8cac-b01819ecd9fb" />
 
 Adafruit:
+
 <img width="486" height="179" alt="image" src="https://github.com/user-attachments/assets/f8738833-cfa1-4d91-b6a0-0330815d6da6" />
 
 
