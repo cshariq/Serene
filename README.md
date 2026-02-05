@@ -37,13 +37,12 @@ While a few very luxury cars offer ANC, we wanted to make ANC more accessible to
 ---
 
 ## PCB
-
-
+<img width="500" height="890" alt="image" src="https://github.com/user-attachments/assets/b163734b-e3cd-4c76-bce3-792532eaf435" />
 
 ---
 
 ## Wiring Diagram
-
+<img width="1318" height="931" alt="image" src="https://github.com/user-attachments/assets/f642dc4a-51fe-4a3d-9341-d7e705c53a9a" />
 
 ---
 
