@@ -33,10 +33,12 @@ While a few very luxury cars offer ANC, we wanted to make ANC more accessible to
 ## 3D Model
 
 PCB:
+
 <img width="655" height="434" alt="image" src="https://github.com/user-attachments/assets/7ac86c27-29ce-4630-ba3a-70ae58f0bd60" />
 <img width="722" height="445" alt="image" src="https://github.com/user-attachments/assets/e35c6efb-e188-4985-9bd6-9fb9750783b0" />
 
 Casing:
+
 <img width="589" height="428" alt="image" src="https://github.com/user-attachments/assets/a1ef4850-2492-4c4f-aa21-fb156484d491" />
 <img width="729" height="626" alt="image" src="https://github.com/user-attachments/assets/13c21e6f-37f3-41f0-8109-21be4e4fdf20" />
 
