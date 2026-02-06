@@ -122,21 +122,26 @@ Amazon:
 <img width="531" height="308" alt="image" src="https://github.com/user-attachments/assets/56fba184-d8d4-4598-8a8e-73e33f9c3967" />
 <img width="574" height="334" alt="image" src="https://github.com/user-attachments/assets/d77fcd5b-af47-46c3-8fe0-f54b75862d19" />
 
+
 (4 layer manufacturing for Main PCB, more expensive and thus not used)
 
 <img width="504" height="299" alt="image" src="https://github.com/user-attachments/assets/ba898d97-9c16-49fc-bb57-6ad5d3582e26" />
+
 
 Button PCB:
 
 <img width="439" height="251" alt="image" src="https://github.com/user-attachments/assets/7d6217e9-ba68-4d48-9b11-a7d160179512" />
 
+
 AliExpress:
 
 <img width="614" height="282" alt="image" src="https://github.com/user-attachments/assets/8f56cc2b-43ba-402c-80a0-56d51fad0760" />
 
+
 Vapcell:
 
 <img width="463" height="278" alt="image" src="https://github.com/user-attachments/assets/8452e4ad-b364-4ce4-8cac-b01819ecd9fb" />
+
 
 Adafruit:
 
