@@ -119,13 +119,17 @@ Amazon:
 
 <img width="507" height="285" alt="image" src="https://github.com/user-attachments/assets/e92a0cdc-b490-451f-ad90-d9e480f6f69a" />
 
-(6 layer manufacturing for Main PCB, less expensive)
+JLCPCB Parts:
 
 <img width="531" height="308" alt="image" src="https://github.com/user-attachments/assets/56fba184-d8d4-4598-8a8e-73e33f9c3967" />
+
+
+JLCPCB PCB (6 layer manufacturing for Main PCB, less expensive):
+
 <img width="574" height="334" alt="image" src="https://github.com/user-attachments/assets/d77fcd5b-af47-46c3-8fe0-f54b75862d19" />
 
 
-(4 layer manufacturing for Main PCB, more expensive and thus not used)
+JLCPCB PCB (4 layer manufacturing for Main PCB, more expensive and thus **not used**)
 
 <img width="504" height="299" alt="image" src="https://github.com/user-attachments/assets/ba898d97-9c16-49fc-bb57-6ad5d3582e26" />
 
