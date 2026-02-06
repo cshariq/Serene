@@ -14,9 +14,7 @@ During family road trips, I sat in the backseat as a child, and if I didn't yell
 
 With my dad's hearing getting worse, I figured that we needed a way to drown out the road noise. I was desparate for a solution, so taking inspiration from noise-cancelling technology in headphones, I thought: "What if we did the same thing in cars?". 
 
-Asking around to gather interest for this project, my chemistry teacher also said that she wishes her 1 and a half hour commute in the morning was quieter. So, with another client that could benefit, we began developing Serene. 
-
-While a few very luxury cars offer ANC, we wanted to make ANC more accessible to all people, because everyone deserves sereneness!
+While a few very luxury cars offer ANC, I wanted to make ANC more accessible to all people, because everyone deserves sereneness!
 
 ---
 
