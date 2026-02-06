@@ -96,7 +96,7 @@ While a few very luxury cars offer ANC, I wanted to make ANC more accessible to 
 | Subtotal               | Source       | Notes                                                                                                                                                                    |
 |------------------------|--------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | $228.21                | JLCPCB Parts | 2x (JLCPCB requires 2 of each part)                                                                                                                                      |
-| $61.05                 | JLCPCB PCB   | 0.15mm via and expoxy filled & capped selectedas it is required by the ADAU1787 Chip. Lead free coating also selected for safety and its only a dollar extra. 4 Layer manufacturing is selected because it is cheaper than 2 layer due to a coupon|
+| $61.05                 | JLCPCB PCB   | 0.15mm via and epoxy filled & capped selectedas it is required by the ADAU1787 Chip. Lead free coating also selected for safety and its only a dollar extra. 4 Layer manufacturing is selected because it is cheaper than 2 layer due to a coupon. Although other options were explored, most DSPs(Digital Singal Processors) which is required for fast processing of audio(required for ANC) are WLCSP chips requiring 0.15mm vias which are epoxy filled & capped. Other solutions are too slow for this application.|
 | $22.50                 | Amazon       |                                                                                                                                                                          |
 | $20.56                 | AliExpress   |                                                                                                                                                                          |
 | $11.86                 | Adafruit     | For the LEDs                                                                                                                                                             |
@@ -110,6 +110,8 @@ While a few very luxury cars offer ANC, I wanted to make ANC more accessible to 
 | AliExpress Grand Total | $20.70       | 28.07 CAD --> 20.70 USD                                                                                                                                                  |
 | Vapcell Grand Total    | $22.99       |                                                                                                                                                                          |
 | Grand Total            | $393.43      |                                                                                                                                                                          |
+
+Screenshots of total with shipping and taxes.
 
 Amazon:
 
