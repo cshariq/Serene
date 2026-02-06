@@ -102,7 +102,9 @@ While a few very luxury cars offer ANC, I wanted to make ANC more accessible to 
 | $11.86                 | Adafruit     | For the LEDs                                                                                                                                                             |
 | $250.08                | All          | Not accounting for 2x JLCPCB Parts                                                                                                                                       |
 | $364.18                | All          | 2x (JLCPCB required 2 of each part)                                                                                                                                      |
-|                        |              |                                                                                                                                                                          |
+
+| Grand Total            | Source       | Notes                                                                                                                                                                    |
+|------------------------|--------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | JLCParts Grand Total   | $238.13      | 2x (JLCPCB required 2 of each part)                                                                                                                                      |
 | JLCPCB Grand Total     | $72.25       | JLCPCB Advanced is cheaper due to coupons                                                                                                                                |
 | Amazon Subtotal        | $16.28       | 22.5 CAD --> 16.28 USD                                                                                                                                                   |
