@@ -124,7 +124,7 @@ Amazon:
 
 <img width="574" height="334" alt="image" src="https://github.com/user-attachments/assets/d77fcd5b-af47-46c3-8fe0-f54b75862d19" />
 
-(4 layer manufacturing for Main PCB)
+(4 layer manufacturing for Main PCB, more expensive and thus not used)
 
 <img width="504" height="299" alt="image" src="https://github.com/user-attachments/assets/ba898d97-9c16-49fc-bb57-6ad5d3582e26" />
 
