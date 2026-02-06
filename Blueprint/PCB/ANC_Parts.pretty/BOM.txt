@@ -1,3 +1,0 @@
-3DX_Same_Sky_Supplier: Same Sky
-3DX_Same_Sky_Description: 3 conductors, 3.5mm, SMT Audio Jack w/ 2 Switch
-3DX_Same_Sky_Model Number: SJ2-3593D-SMT-TR
