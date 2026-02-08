@@ -41,7 +41,8 @@ While a few very luxury cars offer ANC, I wanted to make ANC more accessible to 
 ---
 
 ## PCB
-<img src="https://github.com/user-attachments/assets/b163734b-e3cd-4c76-bce3-792532eaf435" width="35%">
+<img alt="image" src="https://github.com/user-attachments/assets/5948268e-198a-415b-8add-9190080b4680" width="35%" />
+
 
 ---
 
