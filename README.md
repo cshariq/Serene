@@ -38,16 +38,27 @@ While a few very luxury cars offer ANC, I wanted to make ANC more accessible to 
 <img src="https://github.com/user-attachments/assets/a1ef4850-2492-4c4f-aa21-fb156484d491" width="60%">
 <img src="https://github.com/user-attachments/assets/13c21e6f-37f3-41f0-8109-21be4e4fdf20" width="60%">
 
+
 ---
 
 ## PCB
+### Main PCB
 <img alt="image" src="https://github.com/user-attachments/assets/5948268e-198a-415b-8add-9190080b4680" width="35%" />
+
+### Button PCB
+<img width="1283" height="698" alt="image" src="https://github.com/user-attachments/assets/3102b411-5cf9-4371-84bc-1d69bdba7472" />
+<img width="1455" height="752" alt="image" src="https://github.com/user-attachments/assets/25693b2f-e65d-4107-a6b4-63d304a0fbf1" />
 
 
 ---
 
 ## Wiring Diagram
+### Main PCB
 <img src="https://github.com/user-attachments/assets/f642dc4a-51fe-4a3d-9341-d7e705c53a9a" width="75%">
+
+### Button PCB
+<img width="1635" height="371" alt="image" src="https://github.com/user-attachments/assets/38c6950a-f92b-4b3c-92c4-08033e02af04" />
+
 
 ---
 
