@@ -47,7 +47,6 @@ While a few very luxury cars offer ANC, I wanted to make ANC more accessible to 
 
 ### Button PCB
 <img width="1283" height="698" alt="image" src="https://github.com/user-attachments/assets/3102b411-5cf9-4371-84bc-1d69bdba7472" />
-<img width="1455" height="752" alt="image" src="https://github.com/user-attachments/assets/25693b2f-e65d-4107-a6b4-63d304a0fbf1" />
 
 
 ---
@@ -58,6 +57,7 @@ While a few very luxury cars offer ANC, I wanted to make ANC more accessible to 
 
 ### Button PCB
 <img width="1635" height="371" alt="image" src="https://github.com/user-attachments/assets/38c6950a-f92b-4b3c-92c4-08033e02af04" />
+<img width="1455" height="752" alt="image" src="https://github.com/user-attachments/assets/25693b2f-e65d-4107-a6b4-63d304a0fbf1" />
 
 
 ---
