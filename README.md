@@ -28,7 +28,7 @@ While a few very luxury cars offer ANC, I wanted to make ANC more accessible to 
 
 ---
 
-## 3D Model
+## 3D Model: [OnShape Link](https://cad.onshape.com/documents/61c8b07b134ed299bc7b3a3e/w/ec2ebddc7aaece6417831267/e/c16017c5fc26cf24515a7a41?renderMode=0&uiState=69a0cfd834c79f4888558db4)
 
 ### PCB:
 <img src="https://github.com/user-attachments/assets/7ac86c27-29ce-4630-ba3a-70ae58f0bd60" width="65%">
